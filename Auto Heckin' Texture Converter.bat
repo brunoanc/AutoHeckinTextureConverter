@@ -39,9 +39,9 @@ if not exist ".\tools\nvtt.dll" (
 	exit /b
 )
 
-if not exist ".\tools\DivinityMashine.exe" (
+if not exist ".\tools\DivinityMachine.exe" (
 	echo.
-	echo 'DivinityMashine.exe' not found! Did you extract everything in the tools folder?
+	echo 'DivinityMachine.exe' not found! Did you extract everything in the tools folder?
 	echo.
 	pause
 	exit /b
@@ -67,20 +67,24 @@ exit /b
 
 :StartLoop
 if "%~1" == "" goto Exit
+
 echo.
 echo|set /p="Converting '%~nx1'..."
 echo.
-.\tools\nvcompress.exe -bc1a -fast "%~1" "%~1.dds" >nul
-.\tools\DivinityMachine.exe "%~1.dds" >nul
+
+.\tools\nvcompress.exe -bc1a -fast "%~1" "%~1.tmp" >nul
+.\tools\DivinityMachine.exe "%~1.tmp" >nul
+
 for /f "tokens=1 delims=." %%a in ("%~1") do (set "filename=%%a") >nul
-set "name=%~1.dds"
-set "tga_name=%name:.dds=.tga%"
-move /y "%tga_name%" "%filename%.tga" >nul
+move /y "%~1.tga" "%filename%.tga" >nul
+
 .\tools\EternalTextureCompressor.exe "%filename%.tga" >nul
-del "%~1.dds" >nul
+del "%~1.tmp" >nul
+
 shift
 goto StartLoop
 
 :Exit
+echo.
 pause
 exit /b
