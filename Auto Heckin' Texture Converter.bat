@@ -71,7 +71,7 @@ echo.
 echo|set /p="Converting '%~nx1'..."
 echo.
 .\tools\nvcompress.exe -bc1a -fast "%~1" "%~1.dds" >nul
-.\tools\DivinityMashine.exe "%~1.dds" >nul
+.\tools\DivinityMachine.exe "%~1.dds" >nul
 for /f "tokens=1 delims=." %%a in ("%~1") do (set "filename=%%a") >nul
 set "name=%~1.dds"
 set "tga_name=%name:.dds=.tga%"
