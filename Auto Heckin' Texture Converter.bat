@@ -72,8 +72,8 @@ echo.
 echo|set /p="Converting '%~nx1'..."
 echo.
 
-for /f "tokens=1 delims=." %%a in ("%~1") do (set "filename=%%a") >nul
-for /f "tokens=1 delims=$" %%a in ("%~1") do (set "stem=%%a") >nul
+for /f "tokens=1 delims=." %%a in ("%~nx1") do (set "filename=%%a") >nul
+for /f "tokens=1 delims=$" %%a in ("%filename%") do (set "stem=%%a") >nul
 
 if "%stem:~-2%"=="_n" (
 	.\tools\nvcompress.exe -bc5 -fast "%~1" "%~1.tmp" >nul
@@ -82,9 +82,9 @@ if "%stem:~-2%"=="_n" (
 )
 
 .\tools\DivinityMachine.exe "%~1.tmp" >nul
-move /y "%~1.tga" "%filename%.tga" >nul
+.\tools\EternalTextureCompressor.exe "%~1.tga" >nul
 
-.\tools\EternalTextureCompressor.exe "%filename%.tga" >nul
+move "%~1.tga" "%~dpn1.tga" >nul
 del "%~1.tmp" >nul
 
 shift
