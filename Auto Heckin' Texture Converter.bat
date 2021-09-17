@@ -73,8 +73,9 @@ echo|set /p="Converting '%~nx1'..."
 echo.
 
 for /f "tokens=1 delims=." %%a in ("%~1") do (set "filename=%%a") >nul
+for /f "tokens=1 delims=$" %%a in ("%~1") do (set "stem=%%a") >nul
 
-if "%filename:~-2%"=="_n" (
+if "%stem:~-2%"=="_n" (
 	.\tools\nvcompress.exe -bc5 -fast "%~1" "%~1.tmp" >nul
 ) else (
 	.\tools\nvcompress.exe -bc1a -fast -srgb "%~1" "%~1.tmp" >nul
