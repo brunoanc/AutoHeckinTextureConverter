@@ -56,6 +56,8 @@ if not exist ".\tools\EternalTextureCompressor.exe" (
 )
 
 if not "%~1" == "" goto StartLoop
+
+rem Display help
 echo.
 echo Usage:
 echo   "%~nx0" [texture1] [texture2] [...]
@@ -65,6 +67,7 @@ echo.
 pause
 exit /b
 
+rem Convert files
 :StartLoop
 if "%~1" == "" goto Exit
 
@@ -74,22 +77,29 @@ echo.
 
 for /f "tokens=1 delims=.$" %%a in ("%~nx1") do (set "stem=%%a") >nul
 
-if "%stem:~-2%"=="_n" (
-	.\tools\nvcompress.exe -bc5 -fast "%~1" "%~1.tmp" >nul
-) else (
+rem Use nvcompress to convert the files into the correct type
+if not "%stem:~-2%"=="_n" if not "%stem:~-7%"=="_Normal" (
 	.\tools\nvcompress.exe -bc1a -fast -srgb "%~1" "%~1.tmp" >nul
+) else (
+	.\tools\nvcompress.exe -bc5 -fast "%~1" "%~1.tmp" >nul
 )
 
+rem Use DivinityMachine to convert the files into the game's BIM format
 .\tools\DivinityMachine.exe "%~1.tmp" >nul
+
+rem Use EternalTextureCompressor to compress the files using oodle
 .\tools\EternalTextureCompressor.exe "%~1.tga" >nul
 
+rem Rename the output file
 move "%~1.tga" "%~dpn1.tga" >nul
 del "%~1.tmp" >nul
 
+rem Go to the next file
 shift
 goto StartLoop
 
 :Exit
+rem Exit
 echo.
 pause
 exit /b
