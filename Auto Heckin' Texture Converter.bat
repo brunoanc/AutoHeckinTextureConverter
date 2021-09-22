@@ -78,10 +78,14 @@ echo.
 for /f "tokens=1 delims=.$" %%a in ("%~nx1") do (set "stem=%%a") >nul
 
 rem Use nvcompress to convert the files into the correct type
-if not "%stem:~-2%"=="_n" if not "%stem:~-7%"=="_Normal" (
-	.\tools\nvcompress.exe -bc1a -fast -srgb "%~1" "%~1.tmp" >nul
-) else (
+if "%stem:~-2%"=="_n" (
 	.\tools\nvcompress.exe -bc5 -fast "%~1" "%~1.tmp" >nul
+) else (
+	if "%stem:~-7%"=="_Normal" (
+		.\tools\nvcompress.exe -bc5 -fast "%~1" "%~1.tmp" >nul
+	) else (
+		.\tools\nvcompress.exe -bc1a -fast -srgb "%~1" "%~1.tmp" >nul
+	)
 )
 
 rem Use DivinityMachine to convert the files into the game's BIM format
