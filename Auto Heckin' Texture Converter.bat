@@ -39,6 +39,14 @@ if not exist ".\tools\nvtt.dll" (
 	exit /b
 )
 
+if not exist ".\tools\texconv.exe" (
+	echo.
+	echo 'texconv.exe' not found! Did you extract everything in the tools folder?
+	echo.
+	pause
+	exit /b
+)
+
 if not exist ".\tools\DivinityMachine.exe" (
 	echo.
 	echo 'DivinityMachine.exe' not found! Did you extract everything in the tools folder?
@@ -75,28 +83,49 @@ echo.
 echo|set /p="Converting '%~nx1'..."
 echo.
 
+rem Use nvcompress to convert the files into the correct type
 for /f "tokens=1 delims=.$" %%a in ("%~nx1") do (set "stem=%%a") >nul
 
-rem Use nvcompress to convert the files into the correct type
-if "%stem:~-2%"=="_n" (
-	.\tools\nvcompress.exe -bc5 -fast "%~1" "%~1.tmp" >nul
-) else (
-	if "%stem:~-7%"=="_Normal" (
+echo %~nx1 | findstr /i /c:"$bc7" >nul
+if errorlevel 1 (
+	if "%stem:~-2%"=="_n" (
 		.\tools\nvcompress.exe -bc5 -fast "%~1" "%~1.tmp" >nul
 	) else (
-		.\tools\nvcompress.exe -bc1a -fast -srgb "%~1" "%~1.tmp" >nul
+		if "%stem:~-7%"=="_Normal" (
+			.\tools\nvcompress.exe -bc5 -fast "%~1" "%~1.tmp" >nul
+		) else (
+			.\tools\nvcompress.exe -bc1a -fast -srgb "%~1" "%~1.tmp" >nul
+		)
 	)
+) else (
+	copy /b /y "%~1" "%~1%~x1" >nul
+	.\tools\texconv.exe -y -f BC7_UNORM -srgb "%~1%~x1" >nul
+	move /y "%~1.dds" "%~1.tmp" >nul
 )
 
 rem Use DivinityMachine to convert the files into the game's BIM format
 .\tools\DivinityMachine.exe "%~1.tmp" >nul
+del "%~1.tmp" >nul
+
+rem Get output's extension
+for /f "tokens=1 delims=$" %%a in ("%~n1") do (set "stripped=%%a") >nul
+
+if "%stripped:~-4%"==".png" (
+	set "extension=png"
+) else (
+	set "extension=tga"
+)
 
 rem Use EternalTextureCompressor to compress the files using oodle
-.\tools\EternalTextureCompressor.exe "%~1.tga" >nul
+.\tools\EternalTextureCompressor.exe "%~1.%extension%" >nul
 
 rem Rename the output file
-move "%~1.tga" "%~dpn1.tga" >nul
-del "%~1.tmp" >nul
+echo %~nx1 | findstr /i /c:"$" >nul
+if errorlevel 1 (
+	move /y "%~1.%extension%" "%~dpn1.%extension%" >nul
+) else (
+	move /y "%~1.%extension%" "%~dpn1" >nul
+)
 
 rem Go to the next file
 shift
