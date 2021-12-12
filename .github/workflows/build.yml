@@ -1,0 +1,97 @@
+name: Build
+
+on:
+  push:
+    tags:
+      - "v*"
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  windows-build:
+    runs-on: windows-2019
+
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - name: Clone repo
+        uses: actions/checkout@v2
+
+      - name: Setup MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: cd to workspace
+        run: cd ${{github.workspace}}
+
+      - name: Configure CMake
+        run: |
+          cmake -B build -T clangcl
+
+      - name: Build
+        run: cmake --build build --config ${{env.BUILD_TYPE}}
+
+      - name: Package
+        run: |
+          mkdir -p package\tools
+          cp tools\windows\* package\tools
+          cp build\Release\AutoHeckinTextureConverter.exe "package\Auto Heckin' Texture Converter.exe"
+
+      - name: Zip files
+        uses: thedoctor0/zip-release@master
+        with:
+          directory: package
+          path: '*'
+          type: zip
+          filename: AutoHeckinTextureConverter-win64.zip
+
+      - name: Upload zip
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{secrets.GITHUB_TOKEN}}
+          file_glob: true
+          file: ${{github.workspace}}/package/AutoHeckinTextureConverter-win64.zip
+          tag: ${{github.ref}}
+
+  linux-build:
+    runs-on: ubuntu-18.04
+
+    steps:
+      - name: Clone repo
+        uses: actions/checkout@v2
+
+      - name: cd to workspace
+        run: cd ${{github.workspace}}
+
+      - name: Configure CMake
+        run: |
+          export CC=gcc-10
+          export CXX=g++-10
+          cmake -B build
+
+      - name: Build
+        run: cmake --build build --config ${{env.BUILD_TYPE}}
+
+      - name: Package
+        run: |
+          mkdir -p package/tools
+          cp tools/linux/* package/tools
+          cp build/AutoHeckinTextureConverter package/AutoHeckinTextureConverter
+
+      - name: Zip files
+        uses: thedoctor0/zip-release@master
+        with:
+          directory: package
+          path: '*'
+          type: tar
+          filename: AutoHeckinTextureConverter-linux.tar.gz
+
+      - name: Upload tar
+        uses: marvinpinto/action-automatic-releases@latest
+        with:
+          repo_token: "${{secrets.GITHUB_TOKEN}}"
+          prerelease: false
+          files: |
+            ${{github.workspace}}/package/AutoHeckinTextureConverter-linux.tar.gz
