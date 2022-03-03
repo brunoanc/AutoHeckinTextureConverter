@@ -1,0 +1,43 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - '**'
+    tags-ignore:
+      - '**'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Clone repo
+        uses: actions/checkout@v2
+
+      - name: Backup oodle.h
+        run: mv lib/oodle.h .
+
+      - name: Clone lib repo
+        uses: actions/checkout@v2
+        with:
+          repository: PowerBall253/lib
+          token: ${{ secrets.ACCESS_TOKEN }}
+          path: lib
+
+      - name: Restore oodle.h
+        run: mv oodle.h lib/
+
+      - name: Switch to Rust nightly
+        run: rustup default nightly
+
+      - name: Test
+        run: cargo test --verbose

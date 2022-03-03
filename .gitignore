@@ -1,3 +1,14 @@
-.vscode/
-build/
-a*
+# Build binaries
+target/
+
+# macOS directory files
+**/*.DS_Store
+
+# Sample files used for testing
+sample*
+
+# IDE files
+.idea/
+
+# Oodle libs
+lib/*oo2core*
