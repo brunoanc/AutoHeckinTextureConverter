@@ -660,7 +660,8 @@ fn handle_textures(paths: Vec<String>) -> i32 {
 
             if file_name.contains("$bc7") {
                 format = DxgiFormat::BC7_UNorm;
-            } else if stripped_file_name.ends_with("_n") || stripped_file_name.ends_with("_Normal") {
+            }
+            else if stripped_file_name.ends_with("_n") || stripped_file_name.ends_with("_Normal") {
                 format = DxgiFormat::BC5_UNorm;
             }
 
@@ -686,14 +687,18 @@ fn handle_textures(paths: Vec<String>) -> i32 {
             };
 
             // Get output filename
-            let mut new_extension = "";
+            let new_extension: &str;
 
             if !file_name.contains('$') {
                 if file_path.file_stem().unwrap().to_str().unwrap().ends_with(".png") {
                     new_extension = "png";
-                } else {
+                }
+                else {
                     new_extension = "tga"
                 }
+            }
+            else {
+                new_extension = "";
             }
 
             let new_file_path = file_path.with_extension(new_extension);
