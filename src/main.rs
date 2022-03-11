@@ -751,6 +751,25 @@ fn handle_textures(paths: Vec<String>) -> i32 {
     failures
 }
 
+// Simulates the 'pause' system command on Windows
+#[cfg(target_os = "windows")]
+fn press_any_key() {
+    // Get process count
+    let process_count: u32;
+
+    unsafe {
+        let mut buffer = [0_u32, 1];
+        process_count = GetConsoleProcessList(buffer.as_mut_ptr(), 1);
+    }
+
+    // If there's only one process, we're not running from terminal
+    if process_count == 1 {
+        println!("\nPress any key to exit...");
+        let mut stdin = stdin();
+        let _ = stdin.read(&mut [0u8]).unwrap();
+    }
+}
+
 fn main() {
     // Print program name
     println!("Auto Heckin' Texture Converter Rust Rewrite by PowerBall253 :D");
@@ -765,6 +784,11 @@ fn main() {
         println!("\nUsage:");
         println!("{} [texture1] [texture2] [...]\n", program);
         println!("Alternatively, drag files onto this executable.");
+
+        // Exit
+        #[cfg(target_os = "windows")]
+        press_any_key();
+
         return;
     }
 
@@ -772,26 +796,10 @@ fn main() {
     let failures = handle_textures(args);
     println!("\nDone.");
 
-    // Press any key to exit
-    #[cfg(target_os = "windows")]
-    {
-        // Get process count
-        let process_count: u32;
-
-        unsafe {
-            let mut buffer = [0_u32, 1];
-            process_count = GetConsoleProcessList(buffer.as_mut_ptr(), 1);
-        }
-
-        // If there's only one process, we're not running from terminal
-        if process_count == 1 {
-            println!("\nPress any key to exit...");
-            let mut stdin = stdin();
-            let _ = stdin.read(&mut [0u8]).unwrap();
-        }
-    }
-
     // Exit
+    #[cfg(target_os = "windows")]
+    press_any_key();
+
     exit(failures);
 }
 
