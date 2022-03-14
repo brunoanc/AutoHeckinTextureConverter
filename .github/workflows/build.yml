@@ -15,12 +15,15 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
+            ispc: ispc-v1.17.0-linux
             filename: AutoHeckinTextureConverter-linux
 
           - os: macos-latest
+            ispc: ispc-v1.17.0-macOS
             filename: AutoHeckinTextureConverter-osx
 
           - os: windows-latest
+            ispc: ispc-v1.17.0-windows
             filename: AutoHeckinTextureConverter-win64.exe
 
     runs-on: ${{ matrix.os }}
@@ -28,6 +31,25 @@ jobs:
     steps:
       - name: Clone repo
         uses: actions/checkout@v2
+
+      - name: Download ispc
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: |
+          $client = New-Object System.Net.WebClient
+          $client.DownloadFile('https://github.com/ispc/ispc/releases/download/v1.17.0/${{ matrix.ispc }}.zip', $pwd.Path + "\${{ matrix.ispc }}.zip")
+          Expand-Archive ${{ matrix.ispc }}.zip -DestinationPath .
+          echo "$pwd\${{ matrix.ispc }}" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          echo "$pwd\${{ matrix.ispc }}\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Download ispc
+        if: ${{ matrix.os != 'windows-latest' }}
+        run: |
+          wget https://github.com/ispc/ispc/releases/download/v1.17.0/${{ matrix.ispc }}.tar.gz
+          tar -xvf ${{ matrix.ispc }}.tar.gz
+          echo "$(pwd)/${{ matrix.ispc }}/bin" >> $GITHUB_PATH
+
+      - name: Test ispc
+        run: ispc --version
 
       - name: Backup oodle.h
         run: mv lib/oodle.h .
@@ -46,7 +68,7 @@ jobs:
         run: rustup default nightly
 
       - name: Build
-        run: cargo build --release --verbose
+        run: cargo build --release --verbose --features=ispc
 
       - name: Rename
         if: ${{ matrix.os == 'windows-latest' }}

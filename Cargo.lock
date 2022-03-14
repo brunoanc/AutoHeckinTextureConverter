@@ -305,6 +305,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "21163e139fa306126e6eedaf49ecdb4588f939600f0b1e770f4205ee4b7fa868"
 
 [[package]]
+name = "gcc"
+version = "0.3.55"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8f5f3913fa0bfe7ee1fd8248b6b9f42a5af4b9d65ec2dd2c3c26132b950ecfc2"
+
+[[package]]
 name = "getrandom"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -387,7 +393,21 @@ name = "intel_tex"
 version = "0.1.4"
 source = "git+https://github.com/PowerBall253/intel-tex-rs?rev=5f347dc#5f347dc843988aa3bd79df4eb2e0f72d7421a7c6"
 dependencies = [
+ "ispc_compile",
  "ispc_rt",
+]
+
+[[package]]
+name = "ispc_compile"
+version = "1.0.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "466537c311581d694d1b72bc8b9cd366d2d7418e1bdaa60bd51bfa8030b23499"
+dependencies = [
+ "bindgen",
+ "gcc",
+ "libc",
+ "regex",
+ "semver",
 ]
 
 [[package]]
@@ -713,6 +733,12 @@ name = "scopeguard"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d29ab0c6d3fc0ee92fe66e2d99f700eab17a8d57d1c1d3b748380fb20baa78cd"
+
+[[package]]
+name = "semver"
+version = "1.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a4a3381e03edd24287172047536f20cabde766e2cd3e65e6b00fb3af51c4f38d"
 
 [[package]]
 name = "shlex"
