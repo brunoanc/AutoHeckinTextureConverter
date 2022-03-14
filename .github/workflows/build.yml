@@ -15,15 +15,15 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            ispc: ispc-v1.17.0-linux.tar.gz
+            ispc: ispc-v1.17.0-linux
             filename: AutoHeckinTextureConverter-linux
 
           - os: macos-latest
-            ispc: ispc-v1.17.0-macOS.tar.gz
+            ispc: ispc-v1.17.0-macOS
             filename: AutoHeckinTextureConverter-osx
 
           - os: windows-latest
-            ispc: ispc-v1.17.0-windows.zip
+            ispc: ispc-v1.17.0-windows
             filename: AutoHeckinTextureConverter-win64.exe
 
     runs-on: ${{ matrix.os }}
