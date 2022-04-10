@@ -542,8 +542,12 @@ fn convert_to_bimage(src_img: DynamicImage, file_name: String, format: DxgiForma
         let img = Arc::clone(&src_img_arc);
 
         let handle = thread::spawn(move || {
-            let mip_width = width / u32::pow(2, i);
-            let mip_height = height / u32::pow(2, i);
+            let power = 2_u32.pow(i);
+
+            // Get the mip's width and height
+            // If the remainder of the division is not 0, add 1 to the number
+            let mip_width = width / power + (width % power != 0)  as u32;
+            let mip_height = height / power + (height % power != 0) as u32;
 
             // Get resized image
             let mip_img = img.resize(mip_width, mip_height, FilterType::Triangle);
