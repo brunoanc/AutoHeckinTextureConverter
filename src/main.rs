@@ -1,7 +1,7 @@
 include!(concat!(env!("OUT_DIR"), "/oodle_bindings.rs"));
 
 extern crate image;
-extern crate intel_tex;
+extern crate ispc_texcomp;
 
 #[cfg(target_os = "windows")]
 extern crate windows_sys;
@@ -18,7 +18,7 @@ use std::path::Path;
 use std::ptr::{null, null_mut};
 use std::sync::{Mutex, Arc};
 use std::thread;
-use intel_tex::{bc1, bc3, bc4, bc5, bc6h, bc7};
+use ispc_texcomp::{bc1, bc3, bc4, bc5, bc6h, bc7};
 use image::{DynamicImage, GenericImageView};
 use image::imageops::FilterType;
 
@@ -553,7 +553,7 @@ fn convert_to_bimage(src_img: DynamicImage, file_name: String, format: DxgiForma
             let mip_img = img.resize(mip_width, mip_height, FilterType::Triangle);
 
             // Construct surface
-            let surface = intel_tex::RgbaSurface {
+            let surface = ispc_texcomp::RgbaSurface {
                 width: mip_width,
                 height: mip_height,
                 stride: mip_width * 4,
