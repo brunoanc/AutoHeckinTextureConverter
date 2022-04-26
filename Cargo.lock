@@ -47,7 +47,6 @@ dependencies = [
 name = "auto_heckin_texture_converter"
 version = "5.0.1"
 dependencies = [
- "bindgen",
  "image",
  "ispc-texcomp",
  "windows-sys",

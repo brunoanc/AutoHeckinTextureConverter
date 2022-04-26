@@ -1,7 +1,5 @@
-extern crate bindgen;
-
-use std::env::{var, consts::OS};
-use std::path::{Path, PathBuf};
+use std::env::consts::OS;
+use std::path::Path;
 
 // Build script
 fn main() {
@@ -32,18 +30,4 @@ fn main() {
 
     // Invalidate the built crate if the oodle lib/wrapper changes
     println!("cargo:rerun-if-changed={}", lib_path);
-    println!("cargo:rerun-if-changed=lib/oodle.h");
-
-    // Create bindings for oodle
-    let bindings = bindgen::Builder::default()
-        .header("lib/oodle.h")
-        .parse_callbacks(Box::new(bindgen::CargoCallbacks))
-        .generate()
-        .expect("Unable to generate bindings");
-
-    // Write bindings to $OUT_DIR/oodle_bindings.rs.
-    let out_path = PathBuf::from(var("OUT_DIR").unwrap());
-    bindings
-        .write_to_file(out_path.join("oodle_bindings.rs"))
-        .expect("Couldn't write bindings!");
 }

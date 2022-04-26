@@ -1,4 +1,4 @@
-include!(concat!(env!("OUT_DIR"), "/oodle_bindings.rs"));
+include!(concat!(env!("CARGO_MANIFEST_DIR"), "/lib/oodle_bindings.rs"));
 
 extern crate image;
 extern crate ispc_texcomp;
