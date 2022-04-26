@@ -51,8 +51,8 @@ jobs:
       - name: Test ispc
         run: ispc --version
 
-      - name: Backup oodle.h
-        run: mv lib/oodle.h .
+      - name: Backup oodle_bindings.rs
+        run: mv lib/oodle_bindings.rs .
 
       - name: Clone lib repo
         uses: actions/checkout@v2
@@ -61,8 +61,8 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           path: lib
 
-      - name: Restore oodle.h
-        run: mv oodle.h lib/
+      - name: Restore oodle_bindings.rs
+        run: mv oodle_bindings.rs lib/
 
       - name: Switch to Rust nightly
         run: rustup default nightly
