@@ -45,7 +45,7 @@ dependencies = [
 
 [[package]]
 name = "auto_heckin_texture_converter"
-version = "5.0.1"
+version = "5.0.2"
 dependencies = [
  "image",
  "ispc-texcomp",
