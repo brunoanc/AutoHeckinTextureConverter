@@ -14,7 +14,7 @@ use std::ffi::c_void;
 use std::fs::File;
 use std::fmt::Write as FmtWrite;
 use std::io::Write as IoWrite;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::ptr::{null, null_mut};
 use std::sync::{Mutex, Arc};
 use std::thread;
@@ -719,7 +719,25 @@ fn handle_textures(paths: Vec<String>) -> i32 {
                 }
             }
 
-            let new_file_path = file_path.with_extension(new_extension);
+            let new_file_path: PathBuf;
+
+            // Prevent overwriting
+            if file_path.with_extension(new_extension).exists() {
+                // Append -i, with the least possible number
+                let trunc_path = file_path.with_extension("").to_str().unwrap().to_string();
+                let mut i = 2_u32;
+
+                while Path::new(&(trunc_path.clone() + "-" + &i.to_string() + "." + new_extension)).exists() {
+                    i += 1;
+                }
+
+                new_file_path = PathBuf::from(&(trunc_path + "-" + &i.to_string() + "." + new_extension));
+            }
+            else {
+                new_file_path = file_path.with_extension(new_extension);
+            }
+
+            // Get filename
             let new_file_name = new_file_path.file_name().unwrap().to_str().unwrap();
 
             // Lock mtx
