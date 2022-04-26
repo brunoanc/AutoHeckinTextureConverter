@@ -6,7 +6,7 @@ extern crate ispc_texcomp;
 #[cfg(target_os = "windows")]
 extern crate windows_sys;
 
-use std::env::{self, var};
+use std::env::{args, var};
 use std::process::exit;
 use std::cmp::max;
 use std::error::Error;
@@ -18,7 +18,7 @@ use std::path::{Path, PathBuf};
 use std::ptr::{null, null_mut};
 use std::sync::{Mutex, Arc};
 use std::thread;
-use ispc_texcomp::{bc1, bc3, bc4, bc5, bc6h, bc7};
+use ispc_texcomp::{bc1, bc3, bc4, bc5, bc6h, bc7, RgbaSurface};
 use image::{DynamicImage, GenericImageView, imageops::FilterType, io::Reader};
 
 #[cfg(target_os = "windows")]
@@ -552,7 +552,7 @@ fn convert_to_bimage(src_img: DynamicImage, file_name: String, format: DxgiForma
             let mip_img = img.resize(mip_width, mip_height, FilterType::Triangle);
 
             // Construct surface
-            let surface = ispc_texcomp::RgbaSurface {
+            let surface = RgbaSurface {
                 width: mip_width,
                 height: mip_height,
                 stride: mip_width * 4,
@@ -811,7 +811,7 @@ fn main() {
     println!("Auto Heckin' Texture Converter Rust Rewrite by PowerBall253 :D");
 
     // Get args
-    let mut args: Vec<String> = env::args().collect();
+    let mut args: Vec<String> = args().collect();
     let program = args[0].clone();
     args.remove(0);
 
