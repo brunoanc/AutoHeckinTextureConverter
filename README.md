@@ -19,15 +19,14 @@ lib/liboo2coremac64.a # macOS
 1. Install Rust by following the instructions [here](https://www.rust-lang.org/tools/install).
 2. Open a terminal and run the following command to switch to the nightly:
   ```
-  cargo build --release
+  rustup default nightly
   ```
-3. Follow [this guide](https://rust-lang.github.io/rust-bindgen/requirements.html) to set up bindgen's dependencies.
-4. Clone the repo using:
+3. Clone the repo using:
   ```
   git clone https://github.com/PowerBall253/AutoHeckinTextureConverter.git
   cd AutoHeckinTextureConverter
   ```
-5. Compile the project using cargo:
+4. Compile the project using cargo:
   ```
   cargo build --release
   ```
