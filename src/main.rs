@@ -19,8 +19,7 @@ use std::ptr::{null, null_mut};
 use std::sync::{Mutex, Arc};
 use std::thread;
 use ispc_texcomp::{bc1, bc3, bc4, bc5, bc6h, bc7};
-use image::{DynamicImage, GenericImageView};
-use image::imageops::FilterType;
+use image::{DynamicImage, GenericImageView, imageops::FilterType, io::Reader};
 
 #[cfg(target_os = "windows")]
 use windows_sys::Win32::System::Console::GetConsoleProcessList;
@@ -670,7 +669,15 @@ fn handle_textures(paths: Vec<String>) -> i32 {
             }
 
             // Load image
-            let src_img = match image::open(file_path) {
+            let src_reader = match Reader::open(file_path).and_then(|r| r.with_guessed_format()) {
+                Ok(reader) => reader,
+                Err(e) => {
+                    write!(&mut output, "ERROR: Failed to load '{}': {}\n", path, e).unwrap();
+                    return (output, false);
+                }
+            };
+
+            let src_img = match src_reader.decode() {
                 Ok(img) => DynamicImage::ImageRgba8(img.into_rgba8()),
                 Err(e) => {
                     write!(&mut output, "ERROR: Failed to load '{}': {}\n", path, e).unwrap();
@@ -702,7 +709,14 @@ fn handle_textures(paths: Vec<String>) -> i32 {
                 }
             }
             else {
-                new_extension = "";
+                let curr_extension = Path::new(&file_name).extension().unwrap().to_str().unwrap();
+
+                if curr_extension.contains('$') {
+                    new_extension = curr_extension;
+                }
+                else {
+                    new_extension = "";
+                }
             }
 
             let new_file_path = file_path.with_extension(new_extension);
