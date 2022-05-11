@@ -5,10 +5,10 @@ edition = "2021"
 
 [dependencies]
 ispc-texcomp = "0.1.18"
-image = { git = "https://github.com/image-rs/image", rev = "b2018f8" }
+image = "0.24.2"
 
 [target.'cfg(target_os = "windows")'.dependencies]
-windows-sys = { version = "0.35.0", features = ["Win32_System_Console"] }
+windows-sys = { version = "0.36.1", features = ["Win32_System_Console"] }
 
 [features]
 ispc = ["ispc-texcomp/ispc"]
