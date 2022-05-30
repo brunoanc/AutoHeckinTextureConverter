@@ -648,7 +648,7 @@ fn handle_textures(paths: Vec<String>) -> i32 {
             // Get texture's format and stripped filename
             let file_path = Path::new(&path);
             let file_name = file_path.file_name().unwrap().to_str().unwrap().to_string();
-            let stripped_file_name = file_name.split('$').next().unwrap();
+            let stripped_file_name = file_name.split('$').next().unwrap().split('.').next().unwrap();
 
             write!(&mut output, "Converting '{}'...\n", file_name).unwrap();
 
