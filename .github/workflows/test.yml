@@ -47,14 +47,14 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.os }}
-          path: target/release/auto_heckin_texture_converter.exe
+          path: ${{ github.workspace }}/target/release/auto_heckin_texture_converter.exe
 
       - name: Upload artifact
         if: ${{ matrix.os != 'windows-latest' }}
         uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.os }}
-          path: target/release/auto_heckin_texture_converter
+          path: ${{ github.workspace }}/target/release/auto_heckin_texture_converter
 
       - name: Test
         run: cargo test --verbose
