@@ -43,14 +43,14 @@ jobs:
         run: cargo build --verbose
 
       - name: Upload artifact
-      if: ${{ matrix.os == 'windows-latest' }}
+        if: ${{ matrix.os == 'windows-latest' }}
         uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.os }}
           path: target/release/auto_heckin_texture_converter.exe
 
       - name: Upload artifact
-      if: ${{ matrix.os != 'windows-latest' }}
+        if: ${{ matrix.os != 'windows-latest' }}
         uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.os }}
