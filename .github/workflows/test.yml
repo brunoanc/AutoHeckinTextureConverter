@@ -40,14 +40,14 @@ jobs:
         run: rustup default nightly
 
       - name: Build
-        run: cargo build --verbose
+        run: cargo build --release --verbose
 
       - name: Upload artifact
         if: ${{ matrix.os == 'windows-latest' }}
         uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.os }}
-          path: ${{ github.workspace }}/target/release/auto_heckin_texture_converter.exe
+          path: ${{ github.workspace }}\target\release\auto_heckin_texture_converter.exe
 
       - name: Upload artifact
         if: ${{ matrix.os != 'windows-latest' }}
