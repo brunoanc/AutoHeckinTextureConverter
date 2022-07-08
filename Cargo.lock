@@ -385,9 +385,9 @@ dependencies = [
 
 [[package]]
 name = "ispc-texcomp"
-version = "0.1.18"
+version = "0.1.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c2317de4405c9ebce1746eef0e6039e68acd26ddf7b34700c00fe92b6a449467"
+checksum = "6f61ae1f145f78787527c92203f1cae4cf03ec6aa9584d6f090710664f17db98"
 dependencies = [
  "cc",
  "glob",
@@ -398,9 +398,9 @@ dependencies = [
 
 [[package]]
 name = "ispc_compile"
-version = "1.0.13"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "466537c311581d694d1b72bc8b9cd366d2d7418e1bdaa60bd51bfa8030b23499"
+checksum = "a7e42f2ee98493c20d0df978e0c843b39ecd72072d629b79533aa4fbddc45cf6"
 dependencies = [
  "bindgen",
  "gcc",
@@ -411,9 +411,9 @@ dependencies = [
 
 [[package]]
 name = "ispc_rt"
-version = "1.0.7"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b71a57f85a90a65ec7ef6bdb5fe694be8d760deabfe74518398152d279a9aaba"
+checksum = "a742565b79ad4e9147f37fc929af92f875601bf40e829aac667aa1c9a374213e"
 dependencies = [
  "libc",
  "num_cpus",
@@ -537,9 +537,9 @@ dependencies = [
 
 [[package]]
 name = "more-asserts"
-version = "0.2.2"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7843ec2de400bcbc6a6328c958dc38e5359da6e93e72e37bc5246bf1ae776389"
+checksum = "5474f8732dc7e0635ae9df6595bcd39cd30e3cfe8479850d4fa3e69306c19712"
 
 [[package]]
 name = "nanorand"
