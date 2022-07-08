@@ -17,16 +17,12 @@ lib/liboo2coremac64.a # macOS
 ```
 
 1. Install Rust by following the instructions [here](https://www.rust-lang.org/tools/install).
-2. Open a terminal and run the following command to switch to the nightly:
-  ```
-  rustup default nightly
-  ```
-3. Clone the repo using:
+2. Clone the repo using:
   ```
   git clone https://github.com/PowerBall253/AutoHeckinTextureConverter.git
   cd AutoHeckinTextureConverter
   ```
-4. Compile the project using cargo:
+3. Compile the project using cargo:
   ```
   cargo build --release
   ```

@@ -64,9 +64,6 @@ jobs:
       - name: Restore oodle_bindings.rs
         run: mv oodle_bindings.rs lib/
 
-      - name: Switch to Rust nightly
-        run: rustup default nightly
-
       - name: Build
         run: cargo build --release --verbose --features=ispc
 
