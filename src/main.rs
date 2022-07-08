@@ -850,6 +850,7 @@ mod test {
     #[test]
     fn test_get_mipmap_size() {
         assert_eq!(get_mipmap_size(1024, 2048, DxgiFormat::BC1_UNorm), Some(1048576));
+        assert_eq!(get_mipmap_size(720, 560, DxgiFormat::BC3_UNorm), Some(403200));
         assert_eq!(get_mipmap_size(576, 254, DxgiFormat::BC5_UNorm), Some(147456));
         assert_eq!(get_mipmap_size(2946, 822, DxgiFormat::BC7_UNorm), Some(2429152));
     }
@@ -860,6 +861,8 @@ mod test {
             DxgiFormat::BC7_UNorm), TextureMaterialKind::TmkDecalnormal);
         assert_eq!(get_texture_material_kind("glass_textured_orange_n.tga$bc5$streamed.png".into(), DxgiFormat::BC5_UNorm),
             TextureMaterialKind::TmkNormal);
+        assert_eq!(get_texture_material_kind("hud_demon_icon_ability_quantumorb.tga$bc3$streamed$mtlkind=particle.png".into(),
+            DxgiFormat::BC3_UNorm), TextureMaterialKind::TmkParticle);
         assert_eq!(get_texture_material_kind("test.png".into(), DxgiFormat::BC1_UNorm), TextureMaterialKind::TmkAlbedo);
     }
 
@@ -871,11 +874,9 @@ mod test {
         assert_eq!(oodle_compress(test_bytes).unwrap(), comp_test_bytes);
     }
 
-    #[test]
-    fn test_convert_to_bimage_1() {
-        let file_path = "./test/symbols_arrow_03a_local.tga$bc7$streamed$mtlkind=decalnormal.png";
-        let file_name = "symbols_arrow_03a_local.tga$bc7$streamed$mtlkind=decalnormal.png";
-        let format = DxgiFormat::BC7_UNorm;
+    fn helper_convert_to_bimage(file_path: &str, format: DxgiFormat, expected_bim_bytes: [u8; 63]) {
+        // Get file name
+        let file_name = Path::new(&file_path).file_name().unwrap().to_str().unwrap();
 
         // Load image
         let src_img = match image::open(file_path) {
@@ -889,54 +890,51 @@ mod test {
             Err(_) => panic!("Failed to convert to bimage")
         };
 
-        assert_eq!(bim_bytes[0..63], [66, 73, 77, 21, 0, 0, 0, 0, 11, 0, 0, 0, 128, 0, 0, 0, 128,
-            0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128, 63, 0, 23, 0, 0, 0,
-            7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        // Compare to expected result
+        assert_eq!(bim_bytes[0..63], expected_bim_bytes);
+    }
+
+    #[test]
+    fn test_convert_to_bimage_1() {
+        let file_path = "./test/symbols_arrow_03a_local.tga$bc7$streamed$mtlkind=decalnormal.png";
+        let format = DxgiFormat::BC7_UNorm;
+        let bim_bytes: [u8; 63] = [66, 73, 77, 21, 0, 0, 0, 0, 11, 0, 0, 0, 128, 0, 0, 0, 128,
+        0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128, 63, 0, 23, 0, 0, 0,
+        7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+
+        helper_convert_to_bimage(file_path, format, bim_bytes);
     }
 
     #[test]
     fn test_convert_to_bimage_2() {
         let file_path = "./test/glass_textured_orange_n.tga$bc5$streamed.png";
-        let file_name = "glass_textured_orange_n.tga$bc5$streamed.png";
         let format = DxgiFormat::BC5_UNorm;
+        let bim_bytes: [u8; 63] = [66, 73, 77, 21, 0, 0, 0, 0, 3, 0, 0, 0, 128, 0, 0, 0, 128,
+        0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128, 63, 0, 25, 0, 0, 0,
+        7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 
-        // Load image
-        let src_img = match image::open(file_path) {
-            Ok(img) => DynamicImage::ImageRgba8(img.into_rgba8()),
-            Err(_) => panic!("Could not load image")
-        };
-
-        // Convert image to bimage format
-        let bim_bytes = match convert_to_bimage(src_img, file_name.into(), format, false) {
-            Ok(vec) => vec,
-            Err(_) => panic!("Failed to convert to bimage")
-        };
-
-        assert_eq!(bim_bytes[0..63], [66, 73, 77, 21, 0, 0, 0, 0, 3, 0, 0, 0, 128, 0, 0, 0, 128,
-            0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128, 63, 0, 25, 0, 0, 0,
-            7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        helper_convert_to_bimage(file_path, format, bim_bytes);
     }
 
     #[test]
     fn test_convert_to_bimage_3() {
+        let file_path = "./test/hud_demon_icon_ability_quantumorb.tga$bc3$streamed.png";
+        let format = DxgiFormat::BC3_UNorm;
+        let bim_bytes: [u8; 63] = [66, 73, 77, 21, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1,
+        0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128, 63, 0, 11, 0, 0, 0,
+        7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+
+        helper_convert_to_bimage(file_path, format, bim_bytes);
+    }
+
+    #[test]
+    fn test_convert_to_bimage_4() {
         let file_path = "./test/test.png";
-        let file_name = "test.png";
         let format = DxgiFormat::BC1_UNorm;
+        let bim_bytes: [u8; 63] = [66, 73, 77, 21, 0, 0, 0, 0, 1, 0, 0, 0, 0, 8, 0, 0, 0, 8,
+        0, 0, 0, 0, 0, 0, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128, 63, 0, 33, 0, 0, 0,
+        7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 
-        // Load image
-        let src_img = match image::open(file_path) {
-            Ok(img) => DynamicImage::ImageRgba8(img.into_rgba8()),
-            Err(_) => panic!("Could not load image")
-        };
-
-        // Convert image to bimage format
-        let bim_bytes = match convert_to_bimage(src_img, file_name.into(), format, false) {
-            Ok(vec) => vec,
-            Err(_) => panic!("Failed to convert to bimage")
-        };
-
-        assert_eq!(bim_bytes[0..63], [66, 73, 77, 21, 0, 0, 0, 0, 1, 0, 0, 0, 0, 8, 0, 0, 0, 8,
-            0, 0, 0, 0, 0, 0, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128, 63, 0, 33, 0, 0, 0,
-            7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        helper_convert_to_bimage(file_path, format, bim_bytes);
     }
 }
