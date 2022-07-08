@@ -435,7 +435,7 @@ fn dxgi_to_bim_format(format: DxgiFormat) -> Result<TextureFormat, String> {
 fn get_texture_material_kind(mut file_name: String, format: DxgiFormat) -> TextureMaterialKind {
     let material_kind: TextureMaterialKind;
 
-    if DxgiFormat::BC7_UNorm != format  {
+    if DxgiFormat::BC7_UNorm != format && DxgiFormat::BC3_UNorm != format  {
         // Strip extensions and $ properties
         let stripped_dollar_section = file_name.split('$').next().unwrap();
         file_name = stripped_dollar_section.split('.').next().unwrap().to_string();
@@ -663,6 +663,9 @@ fn handle_textures(paths: Vec<String>) -> i32 {
 
             if file_name.contains("$bc7") {
                 format = DxgiFormat::BC7_UNorm;
+            }
+            else if file_name.contains("$bc3") {
+                format = DxgiFormat::BC3_UNorm;
             }
             else if stripped_file_name.ends_with("_n") || stripped_file_name.ends_with("_Normal") {
                 format = DxgiFormat::BC5_UNorm;
