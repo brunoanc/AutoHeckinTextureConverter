@@ -57,4 +57,4 @@ jobs:
           path: ${{ github.workspace }}/target/release/auto_heckin_texture_converter
 
       - name: Test
-        run: cargo test --verbose
+        run: cargo test --release --verbose
