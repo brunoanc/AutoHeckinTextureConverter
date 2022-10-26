@@ -21,13 +21,13 @@ jobs:
 
     steps:
       - name: Clone repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Backup oodle_bindings.rs
         run: mv lib/oodle_bindings.rs .
 
       - name: Clone lib repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: PowerBall253/lib
           token: ${{ secrets.ACCESS_TOKEN }}
