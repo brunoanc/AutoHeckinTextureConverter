@@ -738,11 +738,16 @@ fn handle_textures(paths: Vec<String>) -> i32 {
                 let trunc_path = file_path.with_extension("").to_str().unwrap().to_string();
                 let mut i = 2_u32;
 
-                while Path::new(&(trunc_path.clone() + "-" + &i.to_string() + "." + new_extension)).exists() {
+                let dot = match new_extension {
+                    "" => "",
+                    _ => "."
+                };
+
+                while Path::new(&(trunc_path.clone() + "-" + &i.to_string() + dot + new_extension)).exists() {
                     i += 1;
                 }
 
-                new_file_path = PathBuf::from(&(trunc_path + "-" + &i.to_string() + "." + new_extension));
+                new_file_path = PathBuf::from(&(trunc_path + "-" + &i.to_string() + dot + new_extension));
             }
             else {
                 new_file_path = file_path.with_extension(new_extension);
