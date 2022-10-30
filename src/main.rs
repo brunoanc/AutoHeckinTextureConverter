@@ -718,8 +718,8 @@ fn convert_to_bimage(src_img: DynamicImage, file_name: String, format: DxgiForma
 
             let bim_mip = BIMMipMap {
                 mip_level: i as i64,
-                mip_pixel_width: (mip_width - width_missing) as i32,
-                mip_pixel_height: (mip_height - height_missing) as i32,
+                mip_pixel_width: mip_img.dimensions().0 as i32,
+                mip_pixel_height: mip_img.dimensions().1 as i32,
                 decompressed_size: mip_size as i32,
                 compressed_size: mip_size as i32,
                 ..Default::default()
