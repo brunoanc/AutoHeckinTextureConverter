@@ -6,9 +6,14 @@ extern crate ispc_texcomp;
 #[cfg(target_os = "windows")]
 extern crate windows_sys;
 
+#[macro_use]
+extern crate ispc;
+
+ispc_module!(bc7e);
+
 use std::env::{args, var};
 use std::process::exit;
-use std::cmp::max;
+use std::cmp::{min, max};
 use std::error::Error;
 use std::ffi::c_void;
 use std::fs::File;
@@ -18,7 +23,7 @@ use std::path::{Path, PathBuf};
 use std::ptr::{null, null_mut};
 use std::sync::{Mutex, Arc};
 use std::thread;
-use ispc_texcomp::{bc1, bc3, bc4, bc5, bc6h, bc7, RgbaSurface};
+use ispc_texcomp::{bc1, bc3, bc4, bc5, bc6h, RgbaSurface};
 use image::{DynamicImage, GenericImageView, imageops::FilterType, io::Reader};
 
 #[cfg(target_os = "windows")]
@@ -416,6 +421,19 @@ fn get_mipmap_size(width: u32, height: u32, format: DxgiFormat) -> Option<u32> {
     Some(max(1, (width + 3) / 4) * max(1, (height + 3) / 4) * format.get_block_size()?)
 }
 
+// Insert a slice at a specific location in a vec
+// From https://gist.github.com/frozolotl/22a051baa5153b92e0b0207ad462ec12
+pub fn insert_slice_at<T: Copy>(vec: &mut Vec<T>, index: usize, slice: &[T]) {
+    unsafe {
+        assert!(index <= vec.len());
+        vec.reserve(slice.len());
+        let insert_ptr = vec.as_mut_ptr().offset(index as isize);
+        std::ptr::copy(insert_ptr, insert_ptr.offset(slice.len() as isize), vec.len() - index);
+        std::ptr::copy_nonoverlapping(slice.as_ptr(), insert_ptr, slice.len());
+        vec.set_len(vec.len() + slice.len());
+    }
+}
+
 // Get equivalent BIM format from DXGI format
 fn dxgi_to_bim_format(format: DxgiFormat) -> Result<TextureFormat, String> {
     match format {
@@ -557,34 +575,151 @@ fn convert_to_bimage(src_img: DynamicImage, file_name: String, format: DxgiForma
             }
 
             // Get resized image
-            let mip_img = img.resize(mip_width, mip_height, FilterType::Triangle);
+            let mip_img = img.resize_exact(mip_width, mip_height, FilterType::Triangle);
+            let mut mip_img_bytes = mip_img.as_bytes().to_vec();
+
+            // Get division remainder
+            let width_missing = 4 - mip_width % 4;
+            let height_missing = 4 - mip_height % 4;
+
+            // Add horizontal padding bytes
+            if width_missing != 4 {
+                let new_mip_width = mip_width + width_missing;
+                let stride = new_mip_width as usize * 4;
+
+                // Iterate through rows
+                for mut i in (0..stride * mip_height as usize).step_by(stride) {
+                    i = i + mip_width as usize * 4;
+
+                    // Repeat the last pixel
+                    let mut last_pixel = vec![0_u8; width_missing as usize * 4];
+
+                    for j in 0..width_missing as usize {
+                        last_pixel[j * 4..j * 4 + 4].copy_from_slice(&mip_img_bytes[i - 4..i]);
+                    }
+
+                    insert_slice_at(&mut mip_img_bytes, i, &last_pixel);
+                }
+
+                mip_width = new_mip_width;
+            }
+
+            // Add vertical padding bytes
+            if height_missing != 4 {
+                // Get last row of pixels
+                let mut last_row = vec![0_u8; mip_width as usize * 4];
+                let size = mip_img_bytes.len();
+                last_row.copy_from_slice(&mip_img_bytes[size - mip_width as usize * 4..size]);
+
+                // Duplicate last row
+                for i in 0..height_missing as usize {
+                    insert_slice_at(&mut mip_img_bytes, size + mip_width as usize * 4 * i, &last_row);
+                }
+
+                mip_height = mip_height + height_missing;
+            }
 
             // Construct surface
             let surface = RgbaSurface {
                 width: mip_width,
                 height: mip_height,
                 stride: mip_width * 4,
-                data: mip_img.as_bytes()
+                data: &mip_img_bytes
             };
+
+            // Init bc7 encoder
+            unsafe {
+                bc7e::bc7e_compress_block_init();
+            }
 
             // Compress into bcn format
             let mip_size = get_mipmap_size(mip_width, mip_height, format).unwrap();
-            let mut mip_bytes: Vec<u8> = vec![0; mip_size as usize];
 
-            match format {
-                DxgiFormat::BC1_UNorm => bc1::compress_blocks_into(&surface, mip_bytes.as_mut()),
-                DxgiFormat::BC3_UNorm => bc3::compress_blocks_into(&surface, mip_bytes.as_mut()),
-                DxgiFormat::BC4_UNorm => bc4::compress_blocks_into(&surface, mip_bytes.as_mut()),
-                DxgiFormat::BC5_UNorm => bc5::compress_blocks_into(&surface, mip_bytes.as_mut()),
-                DxgiFormat::BC6H_UF16 => bc6h::compress_blocks_into(&bc6h::very_fast_settings(), &surface, mip_bytes.as_mut()),
-                DxgiFormat::BC7_UNorm => bc7::compress_blocks_into(&bc7::alpha_ultra_fast_settings(), &surface, mip_bytes.as_mut()),
-                _ => ()
-            }
+            let mip_bytes = match format {
+                DxgiFormat::BC1_UNorm => bc1::compress_blocks(&surface),
+                DxgiFormat::BC3_UNorm => bc3::compress_blocks(&surface),
+                DxgiFormat::BC4_UNorm => bc4::compress_blocks(&surface),
+                DxgiFormat::BC5_UNorm => bc5::compress_blocks(&surface),
+                DxgiFormat::BC6H_UF16 => bc6h::compress_blocks(&bc6h::very_fast_settings(), &surface),
+                DxgiFormat::BC7_UNorm => {
+                    // Compress options
+                    let mut p = bc7e::bc7e_compress_block_params {
+                        m_max_partitions_mode: [0; 8],
+                        m_weights: [0; 4],
+                        m_uber_level: 0,
+                        m_refinement_passes: 0,
+                        m_mode4_rotation_mask: 0,
+                        m_mode4_index_mask: 0,
+                        m_mode5_rotation_mask: 0,
+                        m_uber1_mask: 0,
+                        m_perceptual: false,
+                        m_pbit_search: false,
+                        m_mode6_only: false,
+                        m_unused0: false,
+                        m_opaque_settings: bc7e::_anon0_ {
+                            m_max_mode13_partitions_to_try: 0,
+                            m_max_mode0_partitions_to_try: 0,
+                            m_max_mode2_partitions_to_try: 0,
+                            m_use_mode: [false; 7],
+                            m_unused1: false,
+                        },
+                        m_alpha_settings: bc7e::_anon1_ {
+                            m_max_mode7_partitions_to_try: 0,
+                            m_mode67_error_weight_mul: [0; 4],
+                            m_use_mode4: false,
+                            m_use_mode5: false,
+                            m_use_mode6: false,
+                            m_use_mode7: false,
+                            m_use_mode4_rotation: false,
+                            m_use_mode5_rotation: false,
+                            m_unused2: false,
+                            m_unused3: false,
+                        }
+                    };
+
+                    unsafe {
+                        bc7e::bc7e_compress_block_params_init_ultrafast(&mut p, true);
+                    }
+
+                    // Compress blocks 64 per 64
+                    let blocks_x = (mip_width / 4) as usize;
+	                let blocks_y = (mip_height / 4) as usize;
+                    let mut packed_blocks = vec![0_u8; blocks_x * blocks_y * 16];
+
+                    for by in 0..blocks_y {
+                        let n = 64;
+
+                        for bx in (0..blocks_x).step_by(n) {
+                            let num_blocks_to_process = min(blocks_x - bx, n);
+
+                            let mut pixels = vec![0_u8; 64 * n];
+
+                            // Get blocks
+                            for b in 0..num_blocks_to_process {
+                                for y in 0_usize..4_usize {
+                                    let coord_x = (bx + b) * 16;
+                                    let coord_y = by * 16 + y * 4;
+                                    let start = coord_x + mip_width as usize * coord_y;
+                                    pixels[b * 64 + y * 16..b * 64 + y * 16 + 16].copy_from_slice(&surface.data[start..start + 16]);
+                                }
+                            }
+
+                            // Compress using BC7
+                            unsafe {
+                                bc7e::bc7e_compress_blocks(num_blocks_to_process as u32, packed_blocks.as_mut_ptr().offset((bx + by * blocks_x) as isize * 16) as *mut u64, pixels.as_mut_ptr() as *mut u32, &p);
+                            }
+                        }
+                    }
+
+                    packed_blocks
+                },
+                _ => vec![0]
+            };
 
             let bim_mip = BIMMipMap {
                 mip_level: i as i64,
-                mip_pixel_width: mip_width as i32,
-                mip_pixel_height: mip_height as i32,
+                mip_pixel_width: (mip_width - width_missing) as i32,
+                mip_pixel_height: (mip_height - height_missing) as i32,
                 decompressed_size: mip_size as i32,
                 compressed_size: mip_size as i32,
                 ..Default::default()

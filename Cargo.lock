@@ -48,6 +48,7 @@ name = "auto_heckin_texture_converter"
 version = "5.1.0"
 dependencies = [
  "image",
+ "ispc",
  "ispc-texcomp",
  "windows-sys",
 ]
@@ -379,6 +380,16 @@ dependencies = [
  "png",
  "scoped_threadpool",
  "tiff",
+]
+
+[[package]]
+name = "ispc"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "39204bb555fb7ee2fbabdf5f7c9a517e64282ee72b3ce59e5c817d94632458a6"
+dependencies = [
+ "ispc_compile",
+ "ispc_rt",
 ]
 
 [[package]]

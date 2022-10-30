@@ -15,13 +15,40 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            ispc: ispc-v1.17.0-linux
+
+          - os: macos-latest
+            ispc: ispc-v1.17.0-macOS
+
+          - os: windows-latest
+            ispc: ispc-v1.17.0-windows
 
     runs-on: ${{ matrix.os }}
 
     steps:
       - name: Clone repo
         uses: actions/checkout@v3
+
+      - name: Download ispc
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: |
+          $client = New-Object System.Net.WebClient
+          $client.DownloadFile('https://github.com/ispc/ispc/releases/download/v1.17.0/${{ matrix.ispc }}.zip', $pwd.Path + "\${{ matrix.ispc }}.zip")
+          Expand-Archive ${{ matrix.ispc }}.zip -DestinationPath .
+          echo "$pwd\${{ matrix.ispc }}" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          echo "$pwd\${{ matrix.ispc }}\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Download ispc
+        if: ${{ matrix.os != 'windows-latest' }}
+        run: |
+          wget https://github.com/ispc/ispc/releases/download/v1.17.0/${{ matrix.ispc }}.tar.gz
+          tar -xvf ${{ matrix.ispc }}.tar.gz
+          echo "$(pwd)/${{ matrix.ispc }}/bin" >> $GITHUB_PATH
+
+      - name: Test ispc
+        run: ispc --version
 
       - name: Backup oodle_bindings.rs
         run: mv lib/oodle_bindings.rs .
