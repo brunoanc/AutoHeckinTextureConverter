@@ -17,6 +17,7 @@ lib/liboo2coremac64.a # macOS
 ```
 
 1. Install Rust by following the instructions [here](https://www.rust-lang.org/tools/install).
+2. Install the [Intel ISPC compiler](https://ispc.github.io/) and make sure it is on your PATH.
 2. Clone the repo using:
   ```
   git clone https://github.com/PowerBall253/AutoHeckinTextureConverter.git
