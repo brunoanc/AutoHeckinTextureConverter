@@ -1,7 +1,7 @@
 include!(concat!(env!("CARGO_MANIFEST_DIR"), "/lib/oodle_bindings.rs"));
 
 extern crate image;
-extern crate ispc_texcomp;
+extern crate texpresso;
 
 #[cfg(target_os = "windows")]
 extern crate windows_sys;
@@ -23,8 +23,8 @@ use std::path::{Path, PathBuf};
 use std::ptr::{null, null_mut};
 use std::sync::{Mutex, Arc};
 use std::thread;
-use ispc_texcomp::{bc1, bc3, bc4, bc5, bc6h, RgbaSurface};
 use image::{DynamicImage, GenericImageView, imageops::FilterType, io::Reader};
+use texpresso::{Format, Algorithm, Params, COLOUR_WEIGHTS_UNIFORM};
 
 #[cfg(target_os = "windows")]
 use windows_sys::Win32::System::Console::GetConsoleProcessList;
@@ -449,6 +449,20 @@ fn dxgi_to_bim_format(format: DxgiFormat) -> Result<TextureFormat, String> {
     }
 }
 
+// Get equivalent BIM format from DXGI format
+fn dxgi_to_texpresso_format(format: DxgiFormat) -> Result<Format, String> {
+    match format {
+        DxgiFormat::BC1_UNorm => Ok(Format::Bc1),
+        DxgiFormat::BC2_UNorm => Ok(Format::Bc2),
+        DxgiFormat::BC3_UNorm => Ok(Format::Bc3),
+        DxgiFormat::BC4_UNorm => Ok(Format::Bc4),
+        DxgiFormat::BC5_UNorm => Ok(Format::Bc5),
+        _ => {
+            return Err("Unsupported target BCn format".into());
+        }
+    }
+}
+
 // Get texture material kind
 fn get_texture_material_kind(mut file_name: String, format: DxgiFormat) -> TextureMaterialKind {
     let material_kind: TextureMaterialKind;
@@ -619,14 +633,6 @@ fn convert_to_bimage(src_img: DynamicImage, file_name: String, format: DxgiForma
                 mip_height = mip_height + height_missing;
             }
 
-            // Construct surface
-            let surface = RgbaSurface {
-                width: mip_width,
-                height: mip_height,
-                stride: mip_width * 4,
-                data: &mip_img_bytes
-            };
-
             // Init bc7 encoder
             unsafe {
                 bc7e::bc7e_compress_block_init();
@@ -636,11 +642,6 @@ fn convert_to_bimage(src_img: DynamicImage, file_name: String, format: DxgiForma
             let mip_size = get_mipmap_size(mip_width, mip_height, format).unwrap();
 
             let mip_bytes = match format {
-                DxgiFormat::BC1_UNorm => bc1::compress_blocks(&surface),
-                DxgiFormat::BC3_UNorm => bc3::compress_blocks(&surface),
-                DxgiFormat::BC4_UNorm => bc4::compress_blocks(&surface),
-                DxgiFormat::BC5_UNorm => bc5::compress_blocks(&surface),
-                DxgiFormat::BC6H_UF16 => bc6h::compress_blocks(&bc6h::very_fast_settings(), &surface),
                 DxgiFormat::BC7_UNorm => {
                     // Compress options
                     let mut p = bc7e::bc7e_compress_block_params {
@@ -700,7 +701,7 @@ fn convert_to_bimage(src_img: DynamicImage, file_name: String, format: DxgiForma
                                     let coord_x = (bx + b) * 16;
                                     let coord_y = by * 16 + y * 4;
                                     let start = coord_x + mip_width as usize * coord_y;
-                                    pixels[b * 64 + y * 16..b * 64 + y * 16 + 16].copy_from_slice(&surface.data[start..start + 16]);
+                                    pixels[b * 64 + y * 16..b * 64 + y * 16 + 16].copy_from_slice(&mip_img_bytes[start..start + 16]);
                                 }
                             }
 
@@ -713,7 +714,21 @@ fn convert_to_bimage(src_img: DynamicImage, file_name: String, format: DxgiForma
 
                     packed_blocks
                 },
-                _ => vec![0]
+                _ => {
+                    // Compression parameters
+                    let params = Params {
+                        algorithm: Algorithm::RangeFit,
+                        weights: COLOUR_WEIGHTS_UNIFORM,
+                        weigh_colour_by_alpha: false
+                    };
+
+                    // Compress to BCx format
+                    let tex_format = dxgi_to_texpresso_format(format).unwrap();
+                    let mut compressed = vec![0u8; tex_format.compressed_size(mip_width as usize, mip_height as usize)];
+                    tex_format.compress(&mip_img_bytes, mip_width as usize, mip_height as usize, params, &mut compressed);
+
+                    compressed
+                }
             };
 
             let bim_mip = BIMMipMap {

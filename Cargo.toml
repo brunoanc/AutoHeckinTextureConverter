@@ -4,18 +4,15 @@ version = "5.1.0"
 edition = "2021"
 
 [dependencies]
-ispc-texcomp = "0.1.20"
+texpresso = "2.0.1"
 image = "0.24.2"
-ispc = "1.0.9"
+ispc = "1.1.0"
 
 [build-dependencies]
-ispc = "1.0.9"
+ispc = "1.1.0"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 windows-sys = { version = "0.42.0", features = ["Win32_System_Console"] }
-
-[features]
-ispc = ["ispc-texcomp/ispc"]
 
 [profile.release]
 strip = true
