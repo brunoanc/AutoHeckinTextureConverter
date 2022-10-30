@@ -684,7 +684,7 @@ fn convert_to_bimage(src_img: DynamicImage, file_name: String, format: DxgiForma
 
                     // Compress blocks 64 per 64
                     let blocks_x = (mip_width / 4) as usize;
-	                let blocks_y = (mip_height / 4) as usize;
+                    let blocks_y = (mip_height / 4) as usize;
                     let mut packed_blocks = vec![0_u8; blocks_x * blocks_y * 16];
 
                     for by in 0..blocks_y {
