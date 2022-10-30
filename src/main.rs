@@ -11,18 +11,18 @@ extern crate ispc;
 
 ispc_module!(bc7e);
 
-use std::env::{args, var};
-use std::process::exit;
-use std::cmp::{min, max};
+use std::env;
+use std::process;
+use std::cmp;
+use std::ptr;
+use std::thread;
 use std::error::Error;
 use std::ffi::c_void;
 use std::fs::File;
 use std::fmt::Write as FmtWrite;
 use std::io::Write as IoWrite;
 use std::path::{Path, PathBuf};
-use std::ptr::{null, null_mut};
 use std::sync::{Mutex, Arc};
-use std::thread;
 use image::{DynamicImage, GenericImageView, imageops::FilterType, io::Reader};
 use texpresso::{Format, Algorithm, Params, COLOUR_WEIGHTS_UNIFORM};
 
@@ -418,7 +418,7 @@ impl BIMMipMap {
 // Get size of given mipmap
 #[inline(always)]
 fn get_mipmap_size(width: u32, height: u32, format: DxgiFormat) -> Option<u32> {
-    Some(max(1, (width + 3) / 4) * max(1, (height + 3) / 4) * format.get_block_size()?)
+    Some(cmp::max(1, (width + 3) / 4) * cmp::max(1, (height + 3) / 4) * format.get_block_size()?)
 }
 
 // Insert a slice at a specific location in a vec
@@ -531,7 +531,7 @@ fn oodle_compress(mut vec: Vec<u8>) -> Result<Vec<u8>, Box<dyn Error>> {
     unsafe {
         comp_len = OodleLZ_Compress(8, vec.as_mut_ptr() as *mut c_void, vec.len() as i32,
                                     comp_vec.as_mut_ptr().add(16) as *mut c_void, 4,
-                                    null(), null(), null(), null_mut(), 0) as usize;
+                                    ptr::null(), ptr::null(), ptr::null(), ptr::null_mut(), 0) as usize;
     }
 
     if comp_len <= 0 {
@@ -550,7 +550,7 @@ fn convert_to_bimage(src_img: DynamicImage, file_name: String, format: DxgiForma
     let (width, height) = src_img.dimensions();
 
     // Get mipmap count
-    let mipmap_count = 1 + f64::from(max(width, height)).log2().floor() as u32;
+    let mipmap_count = 1 + f64::from(cmp::max(width, height)).log2().floor() as u32;
 
     // BIM bytes
     let mut bim: Vec<u8> = Vec::new();
@@ -691,7 +691,7 @@ fn convert_to_bimage(src_img: DynamicImage, file_name: String, format: DxgiForma
                         let n = 64;
 
                         for bx in (0..blocks_x).step_by(n) {
-                            let num_blocks_to_process = min(blocks_x - bx, n);
+                            let num_blocks_to_process = cmp::min(blocks_x - bx, n);
 
                             let mut pixels = vec![0_u8; 64 * n];
 
@@ -847,7 +847,7 @@ fn handle_textures(paths: Vec<String>) -> i32 {
             };
 
             // Check if image should be compressed
-            let compress = var("AUTOHECKIN_SKIP_COMPRESSION").is_err();
+            let compress = env::var("AUTOHECKIN_SKIP_COMPRESSION").is_err();
 
             // Convert image to bimage format
             let bim_bytes = match convert_to_bimage(src_img, file_name.clone(), format, compress) {
@@ -977,7 +977,7 @@ fn main() {
     println!("Auto Heckin' Texture Converter Rust Rewrite by PowerBall253 :D");
 
     // Get args
-    let mut args: Vec<String> = args().collect();
+    let mut args: Vec<String> = env::args().collect();
     let program = args[0].clone();
     args.remove(0);
 
@@ -1002,7 +1002,7 @@ fn main() {
     #[cfg(target_os = "windows")]
     press_any_key();
 
-    exit(failures);
+    process::exit(failures);
 }
 
 // Tests
