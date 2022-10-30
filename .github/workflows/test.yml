@@ -50,8 +50,8 @@ jobs:
       - name: Test ispc
         run: ispc --version
 
-      - name: Backup oodle_bindings.rs
-        run: mv lib/oodle_bindings.rs .
+      - name: Backup lib folder
+        run: mv lib lib_bck
 
       - name: Clone lib repo
         uses: actions/checkout@v3
@@ -60,8 +60,8 @@ jobs:
           token: ${{ secrets.ACCESS_TOKEN }}
           path: lib
 
-      - name: Restore oodle_bindings.rs
-        run: mv oodle_bindings.rs lib/
+      - name: Restore lib folder's content
+        run: mv lib_bck/* lib
 
       - name: Build
         run: cargo build --release --verbose
