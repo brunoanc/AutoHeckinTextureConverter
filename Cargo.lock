@@ -48,7 +48,8 @@ name = "auto_heckin_texture_converter"
 version = "5.1.0"
 dependencies = [
  "image",
- "ispc-texcomp",
+ "ispc",
+ "texpresso",
  "windows-sys",
 ]
 
@@ -110,12 +111,6 @@ name = "byteorder"
 version = "1.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "14c189c53d098945499cdfa7ecc63567cf3886b3332b312a5b4585d8d3a6a610"
-
-[[package]]
-name = "cc"
-version = "1.0.73"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2fff2a6927b3bb87f9595d67196a70493f627687a71d87a0d692242c33f58c11"
 
 [[package]]
 name = "cexpr"
@@ -382,16 +377,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "ispc-texcomp"
-version = "0.1.20"
+name = "ispc"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f61ae1f145f78787527c92203f1cae4cf03ec6aa9584d6f090710664f17db98"
+checksum = "39204bb555fb7ee2fbabdf5f7c9a517e64282ee72b3ce59e5c817d94632458a6"
 dependencies = [
- "cc",
- "glob",
  "ispc_compile",
  "ispc_rt",
- "more-asserts",
 ]
 
 [[package]]
@@ -476,6 +468,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "libm"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "292a948cd991e376cf75541fe5b97a1081d713c618b4f1b9500f8844e49eb565"
+
+[[package]]
 name = "lock_api"
 version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -541,12 +539,6 @@ checksum = "b275950c28b37e794e8c55d88aeb5e139d0ce23fdbbeda68f8d7174abdf9e8fa"
 dependencies = [
  "adler",
 ]
-
-[[package]]
-name = "more-asserts"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5474f8732dc7e0635ae9df6595bcd39cd30e3cfe8479850d4fa3e69306c19712"
 
 [[package]]
 name = "nanorand"
@@ -775,6 +767,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2dfed899f0eb03f32ee8c6a0aabdb8a7949659e3466561fc0adf54e26d88c5f4"
 dependencies = [
  "winapi-util",
+]
+
+[[package]]
+name = "texpresso"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8277e703c934b9693d0773d5749faacc6366b3d81d012da556a4cfd4ab87f336"
+dependencies = [
+ "libm",
 ]
 
 [[package]]

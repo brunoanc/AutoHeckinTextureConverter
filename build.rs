@@ -30,4 +30,15 @@ fn main() {
 
     // Invalidate the built crate if the oodle lib/wrapper changes
     println!("cargo:rerun-if-changed={}", lib_path);
+
+    // Invalidate the built crate if the bc7e ispc file changes
+    println!("cargo:rerun-if-changed={}", "src/bc7e.ispc");
+
+    // Compile bc7e
+    ispc::Config::new()
+        .file("src/bc7e.ispc")
+        .opt_level(2)
+        .optimization_opt(ispc::OptimizationOpt::DisableAssertions)
+        .optimization_opt(ispc::OptimizationOpt::FastMath)
+        .compile("bc7e");
 }
