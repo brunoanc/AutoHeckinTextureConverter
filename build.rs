@@ -1,5 +1,8 @@
+extern crate ispc;
+
 use std::env::consts::OS;
 use std::path::Path;
+use ispc::TargetISA;
 
 // Build script
 fn main() {
@@ -37,6 +40,13 @@ fn main() {
     // Compile bc7e
     ispc::Config::new()
         .file("lib/bc7e.ispc")
+        .target_isas(vec![
+            TargetISA::SSE2i32x4,
+            TargetISA::SSE4i32x4,
+            TargetISA::AVX1i32x8,
+            TargetISA::AVX2i32x8,
+            TargetISA::AVX512KNLi32x16,
+            TargetISA::AVX512SKXi32x16])
         .opt_level(2)
         .optimization_opt(ispc::OptimizationOpt::DisableAssertions)
         .optimization_opt(ispc::OptimizationOpt::FastMath)
