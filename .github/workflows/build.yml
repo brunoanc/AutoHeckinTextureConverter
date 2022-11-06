@@ -15,15 +15,15 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            ispc: ispc-v1.17.0-linux
+            ispc: ispc-v1.18.0-linux
             filename: AutoHeckinTextureConverter-linux
 
           - os: macos-latest
-            ispc: ispc-v1.17.0-macOS
+            ispc: ispc-v1.18.0-macOS
             filename: AutoHeckinTextureConverter-osx
 
           - os: windows-latest
-            ispc: ispc-v1.17.0-windows
+            ispc: ispc-v1.18.0-windows
             filename: AutoHeckinTextureConverter-win64.exe
 
     runs-on: ${{ matrix.os }}
@@ -36,7 +36,7 @@ jobs:
         if: ${{ matrix.os == 'windows-latest' }}
         run: |
           $client = New-Object System.Net.WebClient
-          $client.DownloadFile('https://github.com/ispc/ispc/releases/download/v1.17.0/${{ matrix.ispc }}.zip', $pwd.Path + "\${{ matrix.ispc }}.zip")
+          $client.DownloadFile('https://github.com/ispc/ispc/releases/download/v1.18.0/${{ matrix.ispc }}.zip', $pwd.Path + "\${{ matrix.ispc }}.zip")
           Expand-Archive ${{ matrix.ispc }}.zip -DestinationPath .
           echo "$pwd\${{ matrix.ispc }}" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           echo "$pwd\${{ matrix.ispc }}\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
@@ -44,7 +44,7 @@ jobs:
       - name: Download ispc
         if: ${{ matrix.os != 'windows-latest' }}
         run: |
-          wget https://github.com/ispc/ispc/releases/download/v1.17.0/${{ matrix.ispc }}.tar.gz
+          wget https://github.com/ispc/ispc/releases/download/v1.18.0/${{ matrix.ispc }}.tar.gz
           tar -xvf ${{ matrix.ispc }}.tar.gz
           echo "$(pwd)/${{ matrix.ispc }}/bin" >> $GITHUB_PATH
 
