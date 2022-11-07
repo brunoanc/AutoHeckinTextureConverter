@@ -483,6 +483,9 @@ fn get_texture_material_kind(file_name: String, stripped_file_name: String, form
     else if file_name.contains("$mtlkind=particle") {
         material_kind = TextureMaterialKind::TmkParticle;
     }
+    else if file_name.contains("$mtlkind=heightmap") {
+        material_kind = TextureMaterialKind::TmkHeightmap;
+    }
     else if stripped_file_name.ends_with("_n") || file_name.ends_with("_Normal") {
         material_kind = TextureMaterialKind::TmkNormal;
     }
@@ -819,6 +822,9 @@ fn handle_textures(paths: Vec<String>) -> i32 {
             else if file_name.contains("$bc3") {
                 format = DxgiFormat::BC3_UNorm;
             }
+            else if file_name.contains("$bc4") {
+                format = DxgiFormat::BC4_UNorm;
+            }
             else if stripped_file_name.ends_with("_n") || stripped_file_name.ends_with("_Normal") {
                 format = DxgiFormat::BC5_UNorm;
             }
@@ -1008,6 +1014,7 @@ mod test {
     fn test_get_mipmap_size() {
         assert_eq!(get_mipmap_size(1024, 2048, DxgiFormat::BC1_UNorm), Some(1048576));
         assert_eq!(get_mipmap_size(720, 560, DxgiFormat::BC3_UNorm), Some(403200));
+        assert_eq!(get_mipmap_size(271, 783, DxgiFormat::BC4_UNorm), Some(106624));
         assert_eq!(get_mipmap_size(576, 254, DxgiFormat::BC5_UNorm), Some(147456));
         assert_eq!(get_mipmap_size(2946, 822, DxgiFormat::BC7_UNorm), Some(2429152));
     }
@@ -1023,6 +1030,11 @@ mod test {
             get_texture_material_kind("glass_textured_orange_n.tga$bc5$streamed.png".into(),
                 "glass_textured_orange_n".into(), DxgiFormat::BC5_UNorm),
             TextureMaterialKind::TmkNormal
+        );
+        assert_eq!(
+            get_texture_material_kind("asphalt_g.tga$bc4$streamed$mtlkind=heightmap.png".into(),
+                "asphalt_g".into(), DxgiFormat::BC4_UNorm),
+            TextureMaterialKind::TmkHeightmap
         );
         assert_eq!(
             get_texture_material_kind("hud_demon_icon_ability_quantumorb.tga$bc3$streamed$mtlkind=particle.png".into(),
@@ -1088,10 +1100,10 @@ mod test {
 
     #[test]
     fn test_convert_to_bimage_3() {
-        let file_path = "./test/hud_demon_icon_ability_quantumorb.tga$bc3$streamed.png";
-        let format = DxgiFormat::BC3_UNorm;
-        let bim_bytes: [u8; 63] = [66, 73, 77, 21, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1,
-        0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128, 63, 0, 11, 0, 0, 0,
+        let file_path = "./test/glass_textured_orange_n.tga$bc5$streamed.png";
+        let format = DxgiFormat::BC5_UNorm;
+        let bim_bytes: [u8; 63] = [66, 73, 77, 21, 0, 0, 0, 0, 3, 0, 0, 0, 128, 0, 0, 0, 128,
+        0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128, 63, 0, 25, 0, 0, 0,
         7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 
         helper_convert_to_bimage(file_path, format, bim_bytes);
@@ -1099,6 +1111,17 @@ mod test {
 
     #[test]
     fn test_convert_to_bimage_4() {
+        let file_path = "./test/asphalt_g.tga$bc4$streamed$mtlkind=heightmap.png";
+        let format = DxgiFormat::BC4_UNorm;
+        let bim_bytes: [u8; 63] = [66, 73, 77, 21, 0, 0, 0, 0, 9, 0, 0, 0, 0, 8, 0, 0, 0, 8, 0,
+        0, 0, 0, 0, 0, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128, 63, 0, 24, 0, 0, 0, 7, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+
+        helper_convert_to_bimage(file_path, format, bim_bytes);
+    }
+
+    #[test]
+    fn test_convert_to_bimage_5() {
         let file_path = "./test/test.png";
         let format = DxgiFormat::BC1_UNorm;
         let bim_bytes: [u8; 63] = [66, 73, 77, 21, 0, 0, 0, 0, 1, 0, 0, 0, 0, 8, 0, 0, 0, 8,
