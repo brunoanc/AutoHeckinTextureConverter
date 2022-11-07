@@ -464,48 +464,42 @@ fn dxgi_to_texpresso_format(format: DxgiFormat) -> Result<Format, String> {
 }
 
 // Get texture material kind
-fn get_texture_material_kind(mut file_name: String, format: DxgiFormat) -> TextureMaterialKind {
+fn get_texture_material_kind(file_name: String, stripped_file_name: String, format: DxgiFormat) -> TextureMaterialKind {
     let material_kind: TextureMaterialKind;
 
-    if DxgiFormat::BC7_UNorm != format && DxgiFormat::BC3_UNorm != format  {
-        // Strip extensions and $ properties
-        let stripped_dollar_section = file_name.split('$').next().unwrap();
-        file_name = stripped_dollar_section.split('.').next().unwrap().to_string();
-    }
-
     // Get material kind from filename
-    if file_name.ends_with("_n") || file_name.ends_with("_Normal") {
-        material_kind = TextureMaterialKind::TmkNormal;
-    }
-    else if file_name.ends_with("_s") {
-        material_kind = TextureMaterialKind::TmkSpecular;
-    }
-    else if file_name.ends_with("_g") {
-        material_kind = TextureMaterialKind::TmkSmoothness;
-    }
-    else if file_name.ends_with("_e") {
-        material_kind = TextureMaterialKind::TmkBloommask;
-    }
-    else if file_name.ends_with("_h") {
-        material_kind = TextureMaterialKind::TmkHeightmap;
-    }
-    else if file_name.ends_with("_sss") {
-        material_kind = TextureMaterialKind::TmkSssmask;
-    }
-    else if file_name.contains("mtlkind=ui") {
+    if file_name.contains("$mtlkind=ui") {
         material_kind = TextureMaterialKind::TmkUi;
     }
-    else if file_name.contains("mtlkind=decalnormal") {
+    else if file_name.contains("$mtlkind=decalnormal") {
         material_kind = TextureMaterialKind::TmkDecalnormal;
     }
-    else if file_name.contains("mtlkind=decalalbedo") {
+    else if file_name.contains("$mtlkind=decalalbedo") {
         material_kind = TextureMaterialKind::TmkDecalalbedo;
     }
-    else if file_name.contains("mtlkind=decalspecular") {
+    else if file_name.contains("$mtlkind=decalspecular") {
         material_kind = TextureMaterialKind::TmkDecalspecular;
     }
-    else if file_name.contains("mtlkind=particle") {
+    else if file_name.contains("$mtlkind=particle") {
         material_kind = TextureMaterialKind::TmkParticle;
+    }
+    else if stripped_file_name.ends_with("_n") || file_name.ends_with("_Normal") {
+        material_kind = TextureMaterialKind::TmkNormal;
+    }
+    else if stripped_file_name.ends_with("_s") {
+        material_kind = TextureMaterialKind::TmkSpecular;
+    }
+    else if stripped_file_name.ends_with("_g") {
+        material_kind = TextureMaterialKind::TmkSmoothness;
+    }
+    else if stripped_file_name.ends_with("_e") {
+        material_kind = TextureMaterialKind::TmkBloommask;
+    }
+    else if stripped_file_name.ends_with("_h") {
+        material_kind = TextureMaterialKind::TmkHeightmap;
+    }
+    else if stripped_file_name.ends_with("_sss") {
+        material_kind = TextureMaterialKind::TmkSssmask;
     }
     else if DxgiFormat::BC1_UNorm == format {
         material_kind = TextureMaterialKind::TmkAlbedo;
@@ -545,7 +539,7 @@ fn oodle_compress(mut vec: Vec<u8>) -> Result<Vec<u8>, Box<dyn Error>> {
 }
 
 // Compress texture into dds with mipmaps (no header)
-fn convert_to_bimage(src_img: DynamicImage, file_name: String, format: DxgiFormat, compress: bool) -> Result<Vec<u8>, Box<dyn Error>> {
+fn convert_to_bimage(src_img: DynamicImage, file_name: String, stripped_file_name: String, format: DxgiFormat, compress: bool) -> Result<Vec<u8>, Box<dyn Error>> {
     // Get width and height
     let (width, height) = src_img.dimensions();
 
@@ -561,7 +555,7 @@ fn convert_to_bimage(src_img: DynamicImage, file_name: String, format: DxgiForma
         pixel_height: height as i32,
         mip_count: mipmap_count as i32,
         texture_format: dxgi_to_bim_format(format)? as i32,
-        texture_material_kind: get_texture_material_kind(file_name, format) as i32,
+        texture_material_kind: get_texture_material_kind(file_name, stripped_file_name, format) as i32,
         ..Default::default()
     }.to_bytes());
 
@@ -805,8 +799,8 @@ fn handle_textures(paths: Vec<String>) -> i32 {
 
             // Get texture's format and stripped filename
             let file_path = Path::new(&path);
-            let file_name = file_path.file_name().unwrap().to_str().unwrap().to_string();
-            let stripped_file_name = file_name.split('$').next().unwrap().split('.').next().unwrap();
+            let file_name = file_path.file_name().unwrap().to_str().unwrap().to_owned();
+            let stripped_file_name = file_name.split('$').next().unwrap().split('.').next().unwrap().to_owned();
 
             write!(&mut output, "Converting '{}'...\n", file_name).unwrap();
 
@@ -850,7 +844,7 @@ fn handle_textures(paths: Vec<String>) -> i32 {
             let compress = env::var("AUTOHECKIN_SKIP_COMPRESSION").is_err();
 
             // Convert image to bimage format
-            let bim_bytes = match convert_to_bimage(src_img, file_name.clone(), format, compress) {
+            let bim_bytes = match convert_to_bimage(src_img, file_name.clone(), stripped_file_name, format, compress) {
                 Ok(vec) => vec,
                 Err(e) => {
                     write!(&mut output, "ERROR: Failed to convert '{}' to DDS: {}\n", path, e).unwrap();
@@ -885,7 +879,7 @@ fn handle_textures(paths: Vec<String>) -> i32 {
             // Prevent overwriting
             if file_path.with_extension(new_extension).exists() {
                 // Append -i, with the least possible number
-                let trunc_path = file_path.with_extension("").to_str().unwrap().to_string();
+                let trunc_path = file_path.with_extension("").to_str().unwrap().to_owned();
                 let mut i = 2_u32;
 
                 let dot = match new_extension {
@@ -1020,13 +1014,25 @@ mod test {
 
     #[test]
     fn test_get_texture_material_kind() {
-        assert_eq!(get_texture_material_kind("symbols_arrow_03a_local.tga$bc7$streamed$mtlkind=decalnormal.png".into(),
-            DxgiFormat::BC7_UNorm), TextureMaterialKind::TmkDecalnormal);
-        assert_eq!(get_texture_material_kind("glass_textured_orange_n.tga$bc5$streamed.png".into(), DxgiFormat::BC5_UNorm),
-            TextureMaterialKind::TmkNormal);
-        assert_eq!(get_texture_material_kind("hud_demon_icon_ability_quantumorb.tga$bc3$streamed$mtlkind=particle.png".into(),
-            DxgiFormat::BC3_UNorm), TextureMaterialKind::TmkParticle);
-        assert_eq!(get_texture_material_kind("test.png".into(), DxgiFormat::BC1_UNorm), TextureMaterialKind::TmkAlbedo);
+        assert_eq!(
+            get_texture_material_kind("symbols_arrow_03a_local.tga$bc7$streamed$mtlkind=decalnormal.png".into(),
+                "symbols_arrow_03a_local".into(), DxgiFormat::BC7_UNorm),
+            TextureMaterialKind::TmkDecalnormal
+        );
+        assert_eq!(
+            get_texture_material_kind("glass_textured_orange_n.tga$bc5$streamed.png".into(),
+                "glass_textured_orange_n".into(), DxgiFormat::BC5_UNorm),
+            TextureMaterialKind::TmkNormal
+        );
+        assert_eq!(
+            get_texture_material_kind("hud_demon_icon_ability_quantumorb.tga$bc3$streamed$mtlkind=particle.png".into(),
+                "hud_demon_icon_ability_quantumorb".into(), DxgiFormat::BC3_UNorm),
+            TextureMaterialKind::TmkParticle
+        );
+        assert_eq!(
+            get_texture_material_kind("test.png".into(), "test".into(), DxgiFormat::BC1_UNorm),
+            TextureMaterialKind::TmkAlbedo
+        );
     }
 
     #[test]
@@ -1040,6 +1046,7 @@ mod test {
     fn helper_convert_to_bimage(file_path: &str, format: DxgiFormat, expected_bim_bytes: [u8; 63]) {
         // Get file name
         let file_name = Path::new(&file_path).file_name().unwrap().to_str().unwrap();
+        let stripped_file_name = file_name.split('$').next().unwrap().split('.').next().unwrap().to_owned();
 
         // Load image
         let src_img = match image::open(file_path) {
@@ -1048,7 +1055,7 @@ mod test {
         };
 
         // Convert image to bimage format
-        let bim_bytes = match convert_to_bimage(src_img, file_name.into(), format, false) {
+        let bim_bytes = match convert_to_bimage(src_img, file_name.into(), stripped_file_name, format, false) {
             Ok(vec) => vec,
             Err(_) => panic!("Failed to convert to bimage")
         };
