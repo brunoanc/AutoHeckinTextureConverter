@@ -5,14 +5,14 @@ edition = "2021"
 
 [dependencies]
 texpresso = "2.0.1"
-image = "0.24.4"
-ispc = "1.1.0"
+image = "0.24.5"
+ispc = "2.0.0"
 
 [build-dependencies]
-ispc = "1.1.0"
+ispc = "2.0.0"
 
 [target.'cfg(target_os = "windows")'.dependencies]
-windows-sys = { version = "0.42.0", features = ["Win32_System_Console"] }
+windows-sys = { version = "0.45.0", features = ["Win32_System_Console"] }
 
 [profile.release]
 strip = true
