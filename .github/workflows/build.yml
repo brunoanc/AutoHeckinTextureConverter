@@ -18,10 +18,6 @@ jobs:
             ispc: ispc-v1.18.0-linux
             filename: AutoHeckinTextureConverter-linux
 
-          - os: macos-latest
-            ispc: ispc-v1.18.0-macOS
-            filename: AutoHeckinTextureConverter-osx
-
           - os: windows-latest
             ispc: ispc-v1.18.0-windows
             filename: AutoHeckinTextureConverter-win64.exe

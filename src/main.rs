@@ -1,5 +1,3 @@
-include!(concat!(env!("CARGO_MANIFEST_DIR"), "/lib/oodle_bindings.rs"));
-
 extern crate image;
 extern crate texpresso;
 
@@ -14,10 +12,9 @@ ispc_module!(bc7e);
 use std::env;
 use std::process;
 use std::cmp;
-use std::ptr;
 use std::thread;
+use std::os::raw;
 use std::error::Error;
-use std::ffi::c_void;
 use std::fs::File;
 use std::fmt::Write as FmtWrite;
 use std::io::Write as IoWrite;
@@ -415,6 +412,16 @@ impl BIMMipMap {
     }
 }
 
+// ooz compression binding
+extern "C" {
+    pub fn Kraken_Compress(
+        src: *mut u8,
+        src_len: usize,
+        dst: *mut u8,
+        level: raw::c_int,
+    ) -> raw::c_int;
+}
+
 // Get size of given mipmap
 #[inline(always)]
 fn get_mipmap_size(width: u32, height: u32, format: DxgiFormat) -> Option<u32> {
@@ -514,8 +521,8 @@ fn get_texture_material_kind(file_name: String, stripped_file_name: String, form
     material_kind
 }
 
-// Compress data with oodle
-fn oodle_compress(mut vec: Vec<u8>) -> Result<Vec<u8>, Box<dyn Error>> {
+// Compress data with oodle's kraken
+fn kraken_compress(mut vec: Vec<u8>) -> Result<Vec<u8>, Box<dyn Error>> {
     // Create output byte vec
     let mut comp_len = vec.len() + 274 * ((vec.len() + 0x3FFFF) / 0x40000);
     let mut comp_vec = vec![0_u8; comp_len + 16];
@@ -524,15 +531,14 @@ fn oodle_compress(mut vec: Vec<u8>) -> Result<Vec<u8>, Box<dyn Error>> {
     comp_vec[0..8].copy_from_slice(&[0x44, 0x49, 0x56, 0x49, 0x4E, 0x49, 0x54, 0x59]);
     comp_vec[8..16].copy_from_slice(&(vec.len() as u64).to_le_bytes());
 
-    // Compress using oodle
+    // Compress using ooz
     unsafe {
-        comp_len = OodleLZ_Compress(8, vec.as_mut_ptr() as *mut c_void, vec.len() as i32,
-                                    comp_vec.as_mut_ptr().add(16) as *mut c_void, 4,
-                                    ptr::null(), ptr::null(), ptr::null(), ptr::null_mut(), 0) as usize;
+        comp_len = Kraken_Compress(vec.as_mut_ptr(), vec.len(),
+            comp_vec.as_mut_ptr().add(16), 4) as usize;
     }
 
     if comp_len <= 0 {
-        return Err("Failed to compress texture using oodle".into());
+        return Err("Failed to compress texture using ooz".into());
     }
 
     // Cut off unused bytes
@@ -775,9 +781,9 @@ fn convert_to_bimage(src_img: DynamicImage, file_name: String, stripped_file_nam
     // Add dds bytes to bim
     bim.append(&mut texture);
 
-    // Compress bim texture with oodle
+    // Compress bim texture with kraken
     let comp_bim = match compress {
-        true => oodle_compress(bim)?,
+        true => kraken_compress(bim)?,
         false => bim
     };
 
@@ -1048,11 +1054,11 @@ mod test {
     }
 
     #[test]
-    fn test_oodle_compress() {
+    fn test_kraken_compress() {
         let test_bytes = vec![0x74, 0x65, 0x73, 0x74, 0x63, 0x6F, 0x6D, 0x70, 0x72, 0x65, 0x73, 0x73, 0x69, 0x6F, 0x6E];
         let comp_test_bytes = vec![68, 73, 86, 73, 78, 73, 84, 89, 15, 0, 0, 0, 0, 0, 0, 0, 204, 6, 116, 101, 115, 116,
             99, 111, 109, 112, 114, 101, 115, 115, 105, 111, 110];
-        assert_eq!(oodle_compress(test_bytes).unwrap(), comp_test_bytes);
+        assert_eq!(kraken_compress(test_bytes).unwrap(), comp_test_bytes);
     }
 
     fn helper_convert_to_bimage(file_path: &str, format: DxgiFormat, expected_bim_bytes: [u8; 63]) {

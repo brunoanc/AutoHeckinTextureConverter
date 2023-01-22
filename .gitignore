@@ -9,6 +9,3 @@ sample*
 
 # IDE files
 .idea/
-
-# Oodle libs
-lib/*oo2core*

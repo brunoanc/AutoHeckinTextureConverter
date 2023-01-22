@@ -19,9 +19,6 @@ jobs:
           - os: ubuntu-latest
             ispc: ispc-v1.18.0-linux
 
-          - os: macos-latest
-            ispc: ispc-v1.18.0-macOS
-
           - os: windows-latest
             ispc: ispc-v1.18.0-windows
 
