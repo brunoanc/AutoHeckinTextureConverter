@@ -61,7 +61,7 @@ jobs:
         run: mv lib_bck/* lib
 
       - name: Build
-        run: cargo build --release --verbose
+        run: cargo build --release
 
       - name: Rename
         if: ${{ matrix.os == 'windows-latest' }}
@@ -75,6 +75,5 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file_glob: true
           file: ${{ github.workspace }}/${{ matrix.filename }}
           tag: ${{ github.ref }}
