@@ -472,53 +472,49 @@ fn dxgi_to_texpresso_format(format: DxgiFormat) -> Result<Format, String> {
 
 // Get texture material kind
 fn get_texture_material_kind(file_name: String, stripped_file_name: String, format: DxgiFormat) -> TextureMaterialKind {
-    let material_kind: TextureMaterialKind;
-
     // Get material kind from filename
     if file_name.contains("$mtlkind=ui") {
-        material_kind = TextureMaterialKind::TmkUi;
+        return TextureMaterialKind::TmkUi;
     }
     else if file_name.contains("$mtlkind=decalnormal") {
-        material_kind = TextureMaterialKind::TmkDecalnormal;
+        return TextureMaterialKind::TmkDecalnormal;
     }
     else if file_name.contains("$mtlkind=decalalbedo") {
-        material_kind = TextureMaterialKind::TmkDecalalbedo;
+        return TextureMaterialKind::TmkDecalalbedo;
     }
     else if file_name.contains("$mtlkind=decalspecular") {
-        material_kind = TextureMaterialKind::TmkDecalspecular;
+        return TextureMaterialKind::TmkDecalspecular;
     }
     else if file_name.contains("$mtlkind=particle") {
-        material_kind = TextureMaterialKind::TmkParticle;
+        return TextureMaterialKind::TmkParticle;
     }
     else if file_name.contains("$mtlkind=heightmap") {
-        material_kind = TextureMaterialKind::TmkHeightmap;
+        return TextureMaterialKind::TmkHeightmap;
     }
     else if stripped_file_name.ends_with("_n") || file_name.ends_with("_Normal") {
-        material_kind = TextureMaterialKind::TmkNormal;
+        return TextureMaterialKind::TmkNormal;
     }
     else if stripped_file_name.ends_with("_s") {
-        material_kind = TextureMaterialKind::TmkSpecular;
+        return TextureMaterialKind::TmkSpecular;
     }
     else if stripped_file_name.ends_with("_g") {
-        material_kind = TextureMaterialKind::TmkSmoothness;
+        return TextureMaterialKind::TmkSmoothness;
     }
     else if stripped_file_name.ends_with("_e") {
-        material_kind = TextureMaterialKind::TmkBloommask;
+        return TextureMaterialKind::TmkBloommask;
     }
     else if stripped_file_name.ends_with("_h") {
-        material_kind = TextureMaterialKind::TmkHeightmap;
+        return TextureMaterialKind::TmkHeightmap;
     }
     else if stripped_file_name.ends_with("_sss") {
-        material_kind = TextureMaterialKind::TmkSssmask;
+        return TextureMaterialKind::TmkSssmask;
     }
-    else if DxgiFormat::BC1_UNorm == format {
-        material_kind = TextureMaterialKind::TmkAlbedo;
+    else if format == DxgiFormat::BC1_UNorm {
+        return TextureMaterialKind::TmkAlbedo;
     }
     else {
-        material_kind = TextureMaterialKind::TmkNone;
+        return TextureMaterialKind::TmkNone;
     }
-
-    material_kind
 }
 
 // Compress data with oodle's kraken
@@ -644,94 +640,92 @@ fn convert_to_bimage(src_img: DynamicImage, file_name: String, stripped_file_nam
             // Compress into bcn format
             let mip_size = get_mipmap_size(mip_width, mip_height, format).unwrap();
 
-            let mip_bytes = match format {
-                DxgiFormat::BC7_UNorm => {
-                    // Compress options
-                    let mut p = bc7e::bc7e_compress_block_params {
-                        m_max_partitions_mode: [0; 8],
-                        m_weights: [0; 4],
-                        m_uber_level: 0,
-                        m_refinement_passes: 0,
-                        m_mode4_rotation_mask: 0,
-                        m_mode4_index_mask: 0,
-                        m_mode5_rotation_mask: 0,
-                        m_uber1_mask: 0,
-                        m_perceptual: false,
-                        m_pbit_search: false,
-                        m_mode6_only: false,
-                        m_unused0: false,
-                        m_opaque_settings: bc7e::_anon0_ {
-                            m_max_mode13_partitions_to_try: 0,
-                            m_max_mode0_partitions_to_try: 0,
-                            m_max_mode2_partitions_to_try: 0,
-                            m_use_mode: [false; 7],
-                            m_unused1: false,
-                        },
-                        m_alpha_settings: bc7e::_anon1_ {
-                            m_max_mode7_partitions_to_try: 0,
-                            m_mode67_error_weight_mul: [0; 4],
-                            m_use_mode4: false,
-                            m_use_mode5: false,
-                            m_use_mode6: false,
-                            m_use_mode7: false,
-                            m_use_mode4_rotation: false,
-                            m_use_mode5_rotation: false,
-                            m_unused2: false,
-                            m_unused3: false,
-                        }
-                    };
-
-                    unsafe {
-                        bc7e::bc7e_compress_block_params_init_ultrafast(&mut p, true);
+            let mip_bytes = if format == DxgiFormat::BC7_UNorm {
+                // Compress options
+                let mut p = bc7e::bc7e_compress_block_params {
+                    m_max_partitions_mode: [0; 8],
+                    m_weights: [0; 4],
+                    m_uber_level: 0,
+                    m_refinement_passes: 0,
+                    m_mode4_rotation_mask: 0,
+                    m_mode4_index_mask: 0,
+                    m_mode5_rotation_mask: 0,
+                    m_uber1_mask: 0,
+                    m_perceptual: false,
+                    m_pbit_search: false,
+                    m_mode6_only: false,
+                    m_unused0: false,
+                    m_opaque_settings: bc7e::_anon0_ {
+                        m_max_mode13_partitions_to_try: 0,
+                        m_max_mode0_partitions_to_try: 0,
+                        m_max_mode2_partitions_to_try: 0,
+                        m_use_mode: [false; 7],
+                        m_unused1: false,
+                    },
+                    m_alpha_settings: bc7e::_anon1_ {
+                        m_max_mode7_partitions_to_try: 0,
+                        m_mode67_error_weight_mul: [0; 4],
+                        m_use_mode4: false,
+                        m_use_mode5: false,
+                        m_use_mode6: false,
+                        m_use_mode7: false,
+                        m_use_mode4_rotation: false,
+                        m_use_mode5_rotation: false,
+                        m_unused2: false,
+                        m_unused3: false,
                     }
+                };
 
-                    // Compress blocks 64 per 64
-                    let blocks_x = (mip_width / 4) as usize;
-                    let blocks_y = (mip_height / 4) as usize;
-                    let mut packed_blocks = vec![0_u8; blocks_x * blocks_y * 16];
-
-                    for by in 0..blocks_y {
-                        let n = 64;
-
-                        for bx in (0..blocks_x).step_by(n) {
-                            let num_blocks_to_process = cmp::min(blocks_x - bx, n);
-
-                            let mut pixels = vec![0_u8; 64 * n];
-
-                            // Get blocks
-                            for b in 0..num_blocks_to_process {
-                                for y in 0_usize..4_usize {
-                                    let coord_x = (bx + b) * 16;
-                                    let coord_y = by * 16 + y * 4;
-                                    let start = coord_x + mip_width as usize * coord_y;
-                                    pixels[b * 64 + y * 16..b * 64 + y * 16 + 16].copy_from_slice(&mip_img_bytes[start..start + 16]);
-                                }
-                            }
-
-                            // Compress using BC7
-                            unsafe {
-                                bc7e::bc7e_compress_blocks(num_blocks_to_process as u32, packed_blocks.as_mut_ptr().offset((bx + by * blocks_x) as isize * 16) as *mut u64, pixels.as_mut_ptr() as *mut u32, &p);
-                            }
-                        }
-                    }
-
-                    packed_blocks
-                },
-                _ => {
-                    // Compression parameters
-                    let params = Params {
-                        algorithm: Algorithm::RangeFit,
-                        weights: COLOUR_WEIGHTS_UNIFORM,
-                        weigh_colour_by_alpha: false
-                    };
-
-                    // Compress to BCx format
-                    let tex_format = dxgi_to_texpresso_format(format).unwrap();
-                    let mut compressed = vec![0u8; tex_format.compressed_size(mip_width as usize, mip_height as usize)];
-                    tex_format.compress(&mip_img_bytes, mip_width as usize, mip_height as usize, params, &mut compressed);
-
-                    compressed
+                unsafe {
+                    bc7e::bc7e_compress_block_params_init_ultrafast(&mut p, true);
                 }
+
+                // Compress blocks 64 per 64
+                let blocks_x = (mip_width / 4) as usize;
+                let blocks_y = (mip_height / 4) as usize;
+                let mut packed_blocks = vec![0_u8; blocks_x * blocks_y * 16];
+
+                for by in 0..blocks_y {
+                    let n = 64;
+
+                    for bx in (0..blocks_x).step_by(n) {
+                        let num_blocks_to_process = cmp::min(blocks_x - bx, n);
+
+                        let mut pixels = vec![0_u8; 64 * n];
+
+                        // Get blocks
+                        for b in 0..num_blocks_to_process {
+                            for y in 0_usize..4_usize {
+                                let coord_x = (bx + b) * 16;
+                                let coord_y = by * 16 + y * 4;
+                                let start = coord_x + mip_width as usize * coord_y;
+                                pixels[b * 64 + y * 16..b * 64 + y * 16 + 16].copy_from_slice(&mip_img_bytes[start..start + 16]);
+                            }
+                        }
+
+                        // Compress using BC7
+                        unsafe {
+                            bc7e::bc7e_compress_blocks(num_blocks_to_process as u32, packed_blocks.as_mut_ptr().offset((bx + by * blocks_x) as isize * 16) as *mut u64, pixels.as_mut_ptr() as *mut u32, &p);
+                        }
+                    }
+                }
+
+                packed_blocks
+            }
+            else {
+                // Compression parameters
+                let params = Params {
+                    algorithm: Algorithm::RangeFit,
+                    weights: COLOUR_WEIGHTS_UNIFORM,
+                    weigh_colour_by_alpha: false
+                };
+
+                // Compress to BCx format
+                let tex_format = dxgi_to_texpresso_format(format).unwrap();
+                let mut compressed = vec![0u8; tex_format.compressed_size(mip_width as usize, mip_height as usize)];
+                tex_format.compress(&mip_img_bytes, mip_width as usize, mip_height as usize, params, &mut compressed);
+
+                compressed
             };
 
             let bim_mip = BIMMipMap {
@@ -782,9 +776,11 @@ fn convert_to_bimage(src_img: DynamicImage, file_name: String, stripped_file_nam
     bim.append(&mut texture);
 
     // Compress bim texture with kraken
-    let comp_bim = match compress {
-        true => kraken_compress(bim)?,
-        false => bim
+    let comp_bim = if compress {
+        kraken_compress(bim)?
+    }
+    else {
+        bim
     };
 
     Ok(comp_bim)
@@ -803,19 +799,19 @@ fn handle_textures(paths: Vec<String>) -> i32 {
         let mtx = Arc::clone(&mtx);
 
         let handle = thread::spawn(move || {
-            let mut output = String::new();
-            write!(&mut output, "\n").unwrap();
+            let mut output = String::default();
+            writeln!(&mut output).unwrap();
 
             // Get texture's format and stripped filename
             let file_path = Path::new(&path);
             let file_name = file_path.file_name().unwrap().to_str().unwrap().to_owned();
             let stripped_file_name = file_name.split('$').next().unwrap().split('.').next().unwrap().to_owned();
 
-            write!(&mut output, "Converting '{}'...\n", file_name).unwrap();
+            writeln!(&mut output, "Converting '{}'...", file_name).unwrap();
 
             // Check if given path exists and is a file
             if !file_path.is_file() {
-                write!(&mut output, "ERROR: '{}' was not found.\n", path).unwrap();
+                writeln!(&mut output, "ERROR: '{}' was not found.", path).unwrap();
                 return (output, false);
             }
 
@@ -839,7 +835,7 @@ fn handle_textures(paths: Vec<String>) -> i32 {
             let src_reader = match Reader::open(file_path).and_then(|r| r.with_guessed_format()) {
                 Ok(reader) => reader,
                 Err(e) => {
-                    write!(&mut output, "ERROR: Failed to load '{}': {}\n", path, e).unwrap();
+                    writeln!(&mut output, "ERROR: Failed to load '{}': {}", path, e).unwrap();
                     return (output, false);
                 }
             };
@@ -847,7 +843,7 @@ fn handle_textures(paths: Vec<String>) -> i32 {
             let src_img = match src_reader.decode() {
                 Ok(img) => DynamicImage::ImageRgba8(img.into_rgba8()),
                 Err(e) => {
-                    write!(&mut output, "ERROR: Failed to load '{}': {}\n", path, e).unwrap();
+                    writeln!(&mut output, "ERROR: Failed to load '{}': {}", path, e).unwrap();
                     return (output, false);
                 }
             };
@@ -859,7 +855,7 @@ fn handle_textures(paths: Vec<String>) -> i32 {
             let bim_bytes = match convert_to_bimage(src_img, file_name.clone(), stripped_file_name, format, compress) {
                 Ok(vec) => vec,
                 Err(e) => {
-                    write!(&mut output, "ERROR: Failed to convert '{}' to DDS: {}\n", path, e).unwrap();
+                    writeln!(&mut output, "ERROR: Failed to convert '{}' to DDS: {}", path, e).unwrap();
                     return (output, false);
                 }
             };
@@ -919,7 +915,7 @@ fn handle_textures(paths: Vec<String>) -> i32 {
             let mut output_file = match File::create(new_file_path.to_str().unwrap()) {
                 Ok(f) => f,
                 Err(e) => {
-                    write!(&mut output, "ERROR: Failed to create output file: {}\n", e).unwrap();
+                    writeln!(&mut output, "ERROR: Failed to create output file: {}", e).unwrap();
                     return (output, false);
                 }
             };
@@ -927,7 +923,7 @@ fn handle_textures(paths: Vec<String>) -> i32 {
             match output_file.write(&bim_bytes) {
                 Ok(_) => (),
                 Err(e) => {
-                    write!(&mut output, "ERROR: Failed to write to output file: {}\n", e).unwrap();
+                    writeln!(&mut output, "ERROR: Failed to write to output file: {}", e).unwrap();
                     return (output, false);
                 }
             }
@@ -935,7 +931,7 @@ fn handle_textures(paths: Vec<String>) -> i32 {
             // Remove mtx lock
             drop(mtx);
 
-            write!(&mut output, "Successfully converted '{}' into '{}'.\n", file_name, new_file_name).unwrap();
+            writeln!(&mut output, "Successfully converted '{}' into '{}'.", file_name, new_file_name).unwrap();
 
             (output, true)
         });
