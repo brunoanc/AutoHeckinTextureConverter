@@ -13,7 +13,6 @@ use std::env;
 use std::process;
 use std::cmp;
 use std::thread;
-use std::os::raw;
 use std::error::Error;
 use std::fs::File;
 use std::fmt::Write as FmtWrite;
@@ -338,7 +337,7 @@ impl Default for BIMHeader {
 
 impl BIMHeader {
     // Convert BIMHeader to bytes representation
-    fn to_bytes(&self) -> [u8; 63] {
+    fn to_bytes(self) -> [u8; 63] {
         let mut bytes = [0_u8; 63];
 
         bytes[0..3].copy_from_slice(&self.signature);
@@ -396,7 +395,7 @@ impl Default for BIMMipMap {
 
 impl BIMMipMap {
     // Convert BIMMipMap to bytes representation
-    fn to_bytes(&self) -> [u8; 36] {
+    fn to_bytes(self) -> [u8; 36] {
         let mut bytes = [0_u8; 36];
 
         bytes[0..8].copy_from_slice(&self.mip_level.to_le_bytes());
@@ -418,8 +417,8 @@ extern "C" {
         src: *mut u8,
         src_len: usize,
         dst: *mut u8,
-        level: raw::c_int,
-    ) -> raw::c_int;
+        level: i32,
+    ) -> i32;
 }
 
 // Get size of given mipmap
@@ -434,8 +433,8 @@ pub fn insert_slice_at<T: Copy>(vec: &mut Vec<T>, index: usize, slice: &[T]) {
     unsafe {
         assert!(index <= vec.len());
         vec.reserve(slice.len());
-        let insert_ptr = vec.as_mut_ptr().offset(index as isize);
-        std::ptr::copy(insert_ptr, insert_ptr.offset(slice.len() as isize), vec.len() - index);
+        let insert_ptr = vec.as_mut_ptr().add(index);
+        std::ptr::copy(insert_ptr, insert_ptr.add(slice.len()), vec.len() - index);
         std::ptr::copy_nonoverlapping(slice.as_ptr(), insert_ptr, slice.len());
         vec.set_len(vec.len() + slice.len());
     }
@@ -450,9 +449,7 @@ fn dxgi_to_bim_format(format: DxgiFormat) -> Result<TextureFormat, String> {
         DxgiFormat::BC5_UNorm => Ok(TextureFormat::FmtBc5),
         DxgiFormat::BC6H_UF16 => Ok(TextureFormat::FmtBc6hUf16),
         DxgiFormat::BC7_UNorm => Ok(TextureFormat::FmtBc7),
-        _ => {
-            return Err("Unsupported target BCn format".into());
-        }
+        _ => Err("Unsupported target BCn format".into())
     }
 }
 
@@ -464,9 +461,7 @@ fn dxgi_to_texpresso_format(format: DxgiFormat) -> Result<Format, String> {
         DxgiFormat::BC3_UNorm => Ok(Format::Bc3),
         DxgiFormat::BC4_UNorm => Ok(Format::Bc4),
         DxgiFormat::BC5_UNorm => Ok(Format::Bc5),
-        _ => {
-            return Err("Unsupported target BCn format".into());
-        }
+        _ => Err("Unsupported target BCn format".into())
     }
 }
 
@@ -474,54 +469,54 @@ fn dxgi_to_texpresso_format(format: DxgiFormat) -> Result<Format, String> {
 fn get_texture_material_kind(file_name: String, stripped_file_name: String, format: DxgiFormat) -> TextureMaterialKind {
     // Get material kind from filename
     if file_name.contains("$mtlkind=ui") {
-        return TextureMaterialKind::TmkUi;
+        TextureMaterialKind::TmkUi
     }
     else if file_name.contains("$mtlkind=decalnormal") {
-        return TextureMaterialKind::TmkDecalnormal;
+        TextureMaterialKind::TmkDecalnormal
     }
     else if file_name.contains("$mtlkind=decalalbedo") {
-        return TextureMaterialKind::TmkDecalalbedo;
+        TextureMaterialKind::TmkDecalalbedo
     }
     else if file_name.contains("$mtlkind=decalspecular") {
-        return TextureMaterialKind::TmkDecalspecular;
+        TextureMaterialKind::TmkDecalspecular
     }
     else if file_name.contains("$mtlkind=particle") {
-        return TextureMaterialKind::TmkParticle;
+        TextureMaterialKind::TmkParticle
     }
     else if file_name.contains("$mtlkind=heightmap") {
-        return TextureMaterialKind::TmkHeightmap;
+        TextureMaterialKind::TmkHeightmap
     }
     else if stripped_file_name.ends_with("_n") || file_name.ends_with("_Normal") {
-        return TextureMaterialKind::TmkNormal;
+        TextureMaterialKind::TmkNormal
     }
     else if stripped_file_name.ends_with("_s") {
-        return TextureMaterialKind::TmkSpecular;
+        TextureMaterialKind::TmkSpecular
     }
     else if stripped_file_name.ends_with("_g") {
-        return TextureMaterialKind::TmkSmoothness;
+        TextureMaterialKind::TmkSmoothness
     }
     else if stripped_file_name.ends_with("_e") {
-        return TextureMaterialKind::TmkBloommask;
+        TextureMaterialKind::TmkBloommask
     }
     else if stripped_file_name.ends_with("_h") {
-        return TextureMaterialKind::TmkHeightmap;
+        TextureMaterialKind::TmkHeightmap
     }
     else if stripped_file_name.ends_with("_sss") {
-        return TextureMaterialKind::TmkSssmask;
+        TextureMaterialKind::TmkSssmask
     }
     else if format == DxgiFormat::BC1_UNorm {
-        return TextureMaterialKind::TmkAlbedo;
+        TextureMaterialKind::TmkAlbedo
     }
     else {
-        return TextureMaterialKind::TmkNone;
+        TextureMaterialKind::TmkNone
     }
 }
 
 // Compress data with oodle's kraken
 fn kraken_compress(mut vec: Vec<u8>) -> Result<Vec<u8>, Box<dyn Error>> {
     // Create output byte vec
-    let mut comp_len = vec.len() + 274 * ((vec.len() + 0x3FFFF) / 0x40000);
-    let mut comp_vec = vec![0_u8; comp_len + 16];
+    let mut comp_len = (vec.len() + 274 * ((vec.len() + 0x3FFFF) / 0x40000)) as i32;
+    let mut comp_vec = vec![0_u8; comp_len as usize + 16];
 
     // Add magic and decompressed size
     comp_vec[0..8].copy_from_slice(&[0x44, 0x49, 0x56, 0x49, 0x4E, 0x49, 0x54, 0x59]);
@@ -530,7 +525,7 @@ fn kraken_compress(mut vec: Vec<u8>) -> Result<Vec<u8>, Box<dyn Error>> {
     // Compress using ooz
     unsafe {
         comp_len = Kraken_Compress(vec.as_mut_ptr(), vec.len(),
-            comp_vec.as_mut_ptr().add(16), 4) as usize;
+            comp_vec.as_mut_ptr().add(16), 4);
     }
 
     if comp_len <= 0 {
@@ -538,7 +533,7 @@ fn kraken_compress(mut vec: Vec<u8>) -> Result<Vec<u8>, Box<dyn Error>> {
     }
 
     // Cut off unused bytes
-    comp_vec.truncate(comp_len + 16);
+    comp_vec.truncate(comp_len as usize + 16);
 
     Ok(comp_vec)
 }
@@ -602,7 +597,7 @@ fn convert_to_bimage(src_img: DynamicImage, file_name: String, stripped_file_nam
 
                 // Iterate through rows
                 for mut i in (0..stride * mip_height as usize).step_by(stride) {
-                    i = i + mip_width as usize * 4;
+                    i += mip_width as usize * 4;
 
                     // Repeat the last pixel
                     let mut last_pixel = vec![0_u8; width_missing as usize * 4];
@@ -629,7 +624,7 @@ fn convert_to_bimage(src_img: DynamicImage, file_name: String, stripped_file_nam
                     insert_slice_at(&mut mip_img_bytes, size + mip_width as usize * 4 * i, &last_row);
                 }
 
-                mip_height = mip_height + height_missing;
+                mip_height += height_missing;
             }
 
             // Init bc7 encoder
@@ -882,10 +877,8 @@ fn handle_textures(paths: Vec<String>) -> i32 {
                 }
             }
 
-            let new_file_path: PathBuf;
-
             // Prevent overwriting
-            if file_path.with_extension(new_extension).exists() {
+            let new_file_path = if file_path.with_extension(new_extension).exists() {
                 // Append -i, with the least possible number
                 let trunc_path = file_path.with_extension("").to_str().unwrap().to_owned();
                 let mut i = 2_u32;
@@ -899,11 +892,11 @@ fn handle_textures(paths: Vec<String>) -> i32 {
                     i += 1;
                 }
 
-                new_file_path = PathBuf::from(&(trunc_path + "-" + &i.to_string() + dot + new_extension));
+                PathBuf::from(&(trunc_path + "-" + &i.to_string() + dot + new_extension))
             }
             else {
-                new_file_path = file_path.with_extension(new_extension);
-            }
+                file_path.with_extension(new_extension)
+            };
 
             // Get filename
             let new_file_name = new_file_path.file_name().unwrap().to_str().unwrap();
@@ -984,7 +977,7 @@ fn main() {
     args.remove(0);
 
     // Display help if no arguments are provided
-    if args.len() == 0 {
+    if args.is_empty() {
         println!("\nUsage:");
         println!("{} [texture1] [texture2] [...]\n", program);
         println!("Alternatively, drag files onto this executable.");

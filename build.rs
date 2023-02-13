@@ -20,7 +20,7 @@ fn main() {
 
     // Link to ooz
     println!("cargo:rustc-link-search=native=./lib/");
-    println!("cargo:rustc-link-lib=static={}", "ooz");
+    println!("cargo:rustc-link-lib=static=ooz");
 
     // Link to c++ library
     if OS == "linux" {
@@ -31,7 +31,7 @@ fn main() {
     println!("cargo:rerun-if-changed={}", lib_path);
 
     // Invalidate the built crate if the bc7e ispc file changes
-    println!("cargo:rerun-if-changed={}", "lib/bc7e.ispc");
+    println!("cargo:rerun-if-changed=lib/bc7e.ispc");
 
     // Compile bc7e
     ispc::Config::new()
