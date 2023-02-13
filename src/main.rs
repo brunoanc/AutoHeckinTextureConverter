@@ -4,10 +4,11 @@ extern crate texpresso;
 #[cfg(target_os = "windows")]
 extern crate windows_sys;
 
-#[macro_use]
-extern crate ispc;
+mod bc7e_bindings;
+use crate::bc7e_bindings::bc7e;
 
-ispc_module!(bc7e);
+mod ooz_bindings;
+use crate::ooz_bindings::ooz;
 
 use std::env;
 use std::process;
@@ -411,16 +412,6 @@ impl BIMMipMap {
     }
 }
 
-// ooz compression binding
-extern "C" {
-    pub fn Kraken_Compress(
-        src: *mut u8,
-        src_len: usize,
-        dst: *mut u8,
-        level: i32,
-    ) -> i32;
-}
-
 // Get size of given mipmap
 #[inline(always)]
 fn get_mipmap_size(width: u32, height: u32, format: DxgiFormat) -> Option<u32> {
@@ -524,7 +515,7 @@ fn kraken_compress(mut vec: Vec<u8>) -> Result<Vec<u8>, Box<dyn Error>> {
 
     // Compress using ooz
     unsafe {
-        comp_len = Kraken_Compress(vec.as_mut_ptr(), vec.len(),
+        comp_len = ooz::Kraken_Compress(vec.as_mut_ptr(), vec.len(),
             comp_vec.as_mut_ptr().add(16), 4);
     }
 
