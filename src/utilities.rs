@@ -23,7 +23,7 @@ pub mod utilities {
 
     // Simulates the 'pause' system command on Windows
     #[cfg(target_os = "windows")]
-    fn press_any_key() {
+    pub fn press_any_key() {
         // Get process count
         let process_count: u32;
 
