@@ -28,41 +28,22 @@ jobs:
       - name: Clone repo
         uses: actions/checkout@v3
 
-      - name: Download ispc
-        if: ${{ matrix.os == 'windows-latest' }}
-        run: |
-          $client = New-Object System.Net.WebClient
-          $client.DownloadFile('https://github.com/ispc/ispc/releases/download/v1.18.0/${{ matrix.ispc }}.zip', $pwd.Path + "\${{ matrix.ispc }}.zip")
-          Expand-Archive ${{ matrix.ispc }}.zip -DestinationPath .
-          echo "$pwd\${{ matrix.ispc }}" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          echo "$pwd\${{ matrix.ispc }}\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-
-      - name: Download ispc
-        if: ${{ matrix.os != 'windows-latest' }}
-        run: |
-          wget https://github.com/ispc/ispc/releases/download/v1.18.0/${{ matrix.ispc }}.tar.gz
-          tar -xvf ${{ matrix.ispc }}.tar.gz
-          echo "$(pwd)/${{ matrix.ispc }}/bin" >> $GITHUB_PATH
-
-      - name: Test ispc
-        run: ispc --version
-
       - name: Build
-        run: cargo build --release --verbose
+        run: cargo build
 
       - name: Upload artifact
         if: ${{ matrix.os == 'windows-latest' }}
         uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.os }}
-          path: ${{ github.workspace }}\target\release\auto_heckin_texture_converter.exe
+          path: ${{ github.workspace }}\target\debug\auto_heckin_texture_converter.exe
 
       - name: Upload artifact
         if: ${{ matrix.os != 'windows-latest' }}
         uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.os }}
-          path: ${{ github.workspace }}/target/release/auto_heckin_texture_converter
+          path: ${{ github.workspace }}/target/debug/auto_heckin_texture_converter
 
       - name: Test
-        run: cargo test --release --verbose
+        run: cargo test --verbose
