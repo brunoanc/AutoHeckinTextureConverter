@@ -13,7 +13,7 @@ use std::fmt::Write as FmtWrite;
 use std::io::Write as IoWrite;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, Arc};
-use crate::bim::{TextureMaterialKind, TextureFormat, BIMHeader, BIMMipMap};
+use bim::{TextureMaterialKind, TextureFormat, BIMHeader, BIMMipMap};
 use image::{DynamicImage, GenericImageView, imageops::FilterType, io::Reader};
 use texpresso::{Algorithm, Params, COLOUR_WEIGHTS_UNIFORM};
 
