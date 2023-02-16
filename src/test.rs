@@ -57,8 +57,52 @@ fn helper_convert_to_bimage(file_path: &str, format: TextureFormat, expected_bim
         Err(_) => panic!("Could not load image")
     };
 
+    // Init bc7 encoder
+    unsafe {
+        bc7e::bc7e_compress_block_init();
+    }
+
+    // Init bc7 compress options
+    let mut p = bc7e::bc7e_compress_block_params {
+        m_max_partitions_mode: [0; 8],
+        m_weights: [0; 4],
+        m_uber_level: 0,
+        m_refinement_passes: 0,
+        m_mode4_rotation_mask: 0,
+        m_mode4_index_mask: 0,
+        m_mode5_rotation_mask: 0,
+        m_uber1_mask: 0,
+        m_perceptual: false,
+        m_pbit_search: false,
+        m_mode6_only: false,
+        m_unused0: false,
+        m_opaque_settings: bc7e::_anon0_ {
+            m_max_mode13_partitions_to_try: 0,
+            m_max_mode0_partitions_to_try: 0,
+            m_max_mode2_partitions_to_try: 0,
+            m_use_mode: [false; 7],
+            m_unused1: false,
+        },
+        m_alpha_settings: bc7e::_anon1_ {
+            m_max_mode7_partitions_to_try: 0,
+            m_mode67_error_weight_mul: [0; 4],
+            m_use_mode4: false,
+            m_use_mode5: false,
+            m_use_mode6: false,
+            m_use_mode7: false,
+            m_use_mode4_rotation: false,
+            m_use_mode5_rotation: false,
+            m_unused2: false,
+            m_unused3: false,
+        }
+    };
+
+    unsafe {
+        bc7e::bc7e_compress_block_params_init_ultrafast(&mut p, true);
+    }
+
     // Convert image to bimage format
-    let bim_bytes = match convert_to_bimage(src_img, file_name.into(), stripped_file_name, format, false) {
+    let bim_bytes = match convert_to_bimage(src_img, file_name.into(), stripped_file_name, format, false, p) {
         Ok(vec) => vec,
         Err(_) => panic!("Failed to convert to bimage")
     };
