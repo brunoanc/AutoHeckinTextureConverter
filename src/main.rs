@@ -7,7 +7,6 @@ mod bc7e;
 mod ooz;
 
 use std::{env, process, cmp, thread};
-use std::error::Error;
 use std::fs::File;
 use std::fmt::Write as FmtWrite;
 use std::io::Write as IoWrite;
@@ -18,7 +17,7 @@ use image::{DynamicImage, GenericImageView, imageops::FilterType, io::Reader};
 use texpresso::{Algorithm, Params, COLOUR_WEIGHTS_UNIFORM};
 
 // Compress data with oodle's kraken
-fn kraken_compress(mut vec: Vec<u8>) -> Result<Vec<u8>, Box<dyn Error>> {
+fn kraken_compress(mut vec: Vec<u8>) -> Result<Vec<u8>, String> {
     // Create output byte vec
     let mut comp_len = (vec.len() + 274 * ((vec.len() + 0x3FFFF) / 0x40000)) as i32;
     let mut comp_vec = vec![0_u8; comp_len as usize + 16];
@@ -44,7 +43,7 @@ fn kraken_compress(mut vec: Vec<u8>) -> Result<Vec<u8>, Box<dyn Error>> {
 }
 
 // Compress texture into dds with mipmaps (no header)
-fn convert_to_bimage(src_img: DynamicImage, file_name: String, stripped_file_name: String, format: TextureFormat, compress: bool) -> Result<Vec<u8>, Box<dyn Error>> {
+fn convert_to_bimage(src_img: DynamicImage, file_name: String, stripped_file_name: String, format: TextureFormat, compress: bool) -> Result<Vec<u8>, String> {
     // Get width and height
     let (width, height) = src_img.dimensions();
 
