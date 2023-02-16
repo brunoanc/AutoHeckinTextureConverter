@@ -169,7 +169,6 @@ impl TextureFormat {
     }
 
     // Calculate mipmap size using block size
-    #[inline(always)]
     pub fn calculate_mipmap_size(&self, width: u32, height: u32) -> Option<u32> {
         Some(cmp::max(1, (width + 3) / 4) * cmp::max(1, (height + 3) / 4) * self.block_size()?)
     }
