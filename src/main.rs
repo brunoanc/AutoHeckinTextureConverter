@@ -1,9 +1,9 @@
 extern crate image;
 extern crate texpresso;
 
+mod bc7e;
 mod bim;
 mod utils;
-mod bc7e;
 mod ooz;
 
 use std::{env, process, cmp, thread};
@@ -12,6 +12,7 @@ use std::fmt::Write as FmtWrite;
 use std::io::Write as IoWrite;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, Arc};
+use bc7e::CompressBlockParams;
 use bim::{TextureMaterialKind, TextureFormat, BIMHeader, BIMMipMap};
 use image::{DynamicImage, GenericImageView, imageops::FilterType, io::Reader};
 use texpresso::{Algorithm, Params, COLOUR_WEIGHTS_UNIFORM};
@@ -28,8 +29,7 @@ fn kraken_compress(mut vec: Vec<u8>) -> Result<Vec<u8>, String> {
 
     // Compress using ooz
     unsafe {
-        comp_len = ooz::Kraken_Compress(vec.as_mut_ptr(), vec.len(),
-            comp_vec.as_mut_ptr().add(16), 4);
+        comp_len = ooz::kraken_compress(vec.as_mut_ptr(), vec.len(), comp_vec.as_mut_ptr().add(16), 4);
     }
 
     if comp_len <= 0 {
@@ -43,7 +43,8 @@ fn kraken_compress(mut vec: Vec<u8>) -> Result<Vec<u8>, String> {
 }
 
 // Compress texture into dds with mipmaps (no header)
-fn convert_to_bimage(src_img: DynamicImage, file_name: String, stripped_file_name: String, format: TextureFormat, compress: bool, p: bc7e::bc7e_compress_block_params) -> Result<Vec<u8>, String> {
+fn convert_to_bimage(src_img: DynamicImage, file_name: String, stripped_file_name: String,
+    format: TextureFormat, compress: bool, compress_params: CompressBlockParams) -> Result<Vec<u8>, String> {
     // Get width and height
     let (width, height) = src_img.dimensions();
 
@@ -68,7 +69,7 @@ fn convert_to_bimage(src_img: DynamicImage, file_name: String, stripped_file_nam
     let src_img_arc = Arc::new(src_img);
 
     for i in 0..mipmap_count {
-        let img = Arc::clone(&src_img_arc);
+        let img = src_img_arc.clone();
 
         let handle = thread::spawn(move || {
             let power = 2_u32.pow(i);
@@ -160,7 +161,9 @@ fn convert_to_bimage(src_img: DynamicImage, file_name: String, stripped_file_nam
 
                         // Compress using BC7
                         unsafe {
-                            bc7e::bc7e_compress_blocks(num_blocks_to_process as u32, packed_blocks.as_mut_ptr().offset((bx + by * blocks_x) as isize * 16) as *mut u64, pixels.as_mut_ptr() as *mut u32, &p);
+                            bc7e::compress_blocks(num_blocks_to_process as u32,
+                                packed_blocks.as_mut_ptr().add((bx + by * blocks_x) * 16) as *mut u64,
+                                pixels.as_mut_ptr() as *mut u32, &compress_params);
                         }
                     }
                 }
@@ -251,7 +254,7 @@ fn handle_textures(paths: Vec<String>) -> i32 {
 
     // Iterate through args
     for path in paths {
-        let mtx = Arc::clone(&mtx);
+        let mtx = mtx.clone();
 
         let handle = thread::spawn(move || {
             let mut output = String::default();
@@ -304,49 +307,17 @@ fn handle_textures(paths: Vec<String>) -> i32 {
             };
 
             // Init bc7 compress options
-            let mut p = bc7e::bc7e_compress_block_params {
-                m_max_partitions_mode: [0; 8],
-                m_weights: [0; 4],
-                m_uber_level: 0,
-                m_refinement_passes: 0,
-                m_mode4_rotation_mask: 0,
-                m_mode4_index_mask: 0,
-                m_mode5_rotation_mask: 0,
-                m_uber1_mask: 0,
-                m_perceptual: false,
-                m_pbit_search: false,
-                m_mode6_only: false,
-                m_unused0: false,
-                m_opaque_settings: bc7e::_anon0_ {
-                    m_max_mode13_partitions_to_try: 0,
-                    m_max_mode0_partitions_to_try: 0,
-                    m_max_mode2_partitions_to_try: 0,
-                    m_use_mode: [false; 7],
-                    m_unused1: false,
-                },
-                m_alpha_settings: bc7e::_anon1_ {
-                    m_max_mode7_partitions_to_try: 0,
-                    m_mode67_error_weight_mul: [0; 4],
-                    m_use_mode4: false,
-                    m_use_mode5: false,
-                    m_use_mode6: false,
-                    m_use_mode7: false,
-                    m_use_mode4_rotation: false,
-                    m_use_mode5_rotation: false,
-                    m_unused2: false,
-                    m_unused3: false,
-                }
-            };
+            let mut compress_params = CompressBlockParams::default();
 
             unsafe {
-                bc7e::bc7e_compress_block_params_init_ultrafast(&mut p, true);
+                bc7e::compress_block_params_init_ultrafast(&mut compress_params, true);
             }
 
             // Check if image should be compressed
             let compress = env::var("AUTOHECKIN_SKIP_COMPRESSION").is_err();
 
             // Convert image to bimage format
-            let bim_bytes = match convert_to_bimage(src_img, file_name.clone(), stripped_file_name, format, compress, p) {
+            let bim_bytes = match convert_to_bimage(src_img, file_name.clone(), stripped_file_name, format, compress, compress_params) {
                 Ok(vec) => vec,
                 Err(e) => {
                     writeln!(&mut output, "ERROR: Failed to convert '{}' to DDS: {}", path, e).unwrap();
@@ -471,7 +442,7 @@ fn main() {
 
     // Init bc7 encoder
     unsafe {
-        bc7e::bc7e_compress_block_init();
+        bc7e::compress_block_init();
     }
 
     // Convert textures
