@@ -18,7 +18,7 @@ use image::{DynamicImage, GenericImageView, imageops::FilterType, io::Reader};
 use texpresso::{Algorithm, Params, COLOUR_WEIGHTS_UNIFORM};
 
 // Compress data with oodle's kraken
-fn kraken_compress(mut vec: Vec<u8>) -> Result<Vec<u8>, String> {
+fn kraken_compress(vec: &mut Vec<u8>) -> Result<Vec<u8>, String> {
     // Create output byte vec
     let mut comp_len = (vec.len() + 274 * ((vec.len() + 0x3FFFF) / 0x40000)) as i32;
     let mut comp_vec = vec![0_u8; comp_len as usize + 16];
@@ -234,14 +234,12 @@ fn convert_to_bimage(src_img: DynamicImage, file_name: String, stripped_file_nam
     bim.append(&mut texture);
 
     // Compress bim texture with kraken
-    let comp_bim = if compress {
-        kraken_compress(bim)?
+    if compress {
+        kraken_compress(&mut bim)
     }
     else {
-        bim
-    };
-
-    Ok(comp_bim)
+        Ok(bim)
+    }
 }
 
 // Load textures, convert them to bim, and compress them

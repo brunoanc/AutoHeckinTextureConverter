@@ -40,10 +40,10 @@ fn test_get_texture_material_kind() {
 
 #[test]
 fn test_kraken_compress() {
-    let test_bytes = vec![0x74, 0x65, 0x73, 0x74, 0x63, 0x6F, 0x6D, 0x70, 0x72, 0x65, 0x73, 0x73, 0x69, 0x6F, 0x6E];
+    let mut test_bytes = vec![0x74, 0x65, 0x73, 0x74, 0x63, 0x6F, 0x6D, 0x70, 0x72, 0x65, 0x73, 0x73, 0x69, 0x6F, 0x6E];
     let comp_test_bytes = vec![68, 73, 86, 73, 78, 73, 84, 89, 15, 0, 0, 0, 0, 0, 0, 0, 204, 6, 116, 101, 115, 116,
         99, 111, 109, 112, 114, 101, 115, 115, 105, 111, 110];
-    assert_eq!(kraken_compress(test_bytes).unwrap(), comp_test_bytes);
+    assert_eq!(kraken_compress(&mut test_bytes).unwrap(), comp_test_bytes);
 }
 
 fn helper_convert_to_bimage(file_path: &str, format: TextureFormat, expected_bim_bytes: [u8; 63]) {

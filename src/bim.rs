@@ -175,7 +175,6 @@ impl TextureFormat {
 }
 
 // BIM header
-#[derive(Copy, Clone)]
 pub struct BIMHeader {
     pub signature: [u8; 3],
     pub version: u8,
@@ -228,7 +227,7 @@ impl Default for BIMHeader {
 
 impl BIMHeader {
     // Convert BIMHeader to bytes representation
-    pub fn to_bytes(self) -> [u8; 63] {
+    pub fn to_bytes(&self) -> [u8; 63] {
         let mut bytes = [0_u8; 63];
 
         bytes[0..3].copy_from_slice(&self.signature);
@@ -257,7 +256,6 @@ impl BIMHeader {
 }
 
 // BIM mipmap
-#[derive(Copy, Clone)]
 pub struct BIMMipMap {
     pub mip_level: i64,
     pub mip_pixel_width: i32,
@@ -286,7 +284,7 @@ impl Default for BIMMipMap {
 
 impl BIMMipMap {
     // Convert BIMMipMap to bytes representation
-    pub fn to_bytes(self) -> [u8; 36] {
+    pub fn to_bytes(&self) -> [u8; 36] {
         let mut bytes = [0_u8; 36];
 
         bytes[0..8].copy_from_slice(&self.mip_level.to_le_bytes());
