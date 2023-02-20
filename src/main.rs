@@ -37,14 +37,14 @@ fn kraken_compress(vec: &mut Vec<u8>) -> Result<Vec<u8>, String> {
         comp_len = ooz::kraken_compress(vec.as_mut_ptr(), vec.len(), comp_vec.as_mut_ptr().add(16), 4);
     }
 
-    if comp_len <= 0 {
-        return Err("Failed to compress texture using ooz".into());
+    if comp_len > 0 {
+        // Cut off unused bytes
+        comp_vec.truncate(comp_len as usize + 16);
+        Ok(comp_vec)
     }
-
-    // Cut off unused bytes
-    comp_vec.truncate(comp_len as usize + 16);
-
-    Ok(comp_vec)
+    else {
+        Err("Failed to compress texture using ooz".into())
+    }
 }
 
 // Compress into BCn format
