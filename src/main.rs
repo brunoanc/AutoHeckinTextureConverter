@@ -1,24 +1,22 @@
-extern crate image;
-extern crate texpresso;
-extern crate fast_image_resize;
-
 mod bc7e;
 mod bim;
-mod utils;
 mod ooz;
+mod utils;
 
-use std::{env, process, cmp, thread, mem};
-use std::fs::File;
-use std::num::NonZeroU32;
-use std::fmt::Write as FmtWrite;
-use std::io::Write as IoWrite;
-use std::path::{Path, PathBuf};
-use std::sync::{Mutex, Arc};
+use std::{
+    cmp, env, mem, process, thread,
+    fmt::Write as _, io::Write as _,
+    fs::File,
+    num::NonZeroU32,
+    path::{Path, PathBuf},
+    sync::{Arc, Mutex}
+};
+
 use bc7e::CompressBlockParams;
-use bim::{TextureMaterialKind, TextureFormat, BIMHeader, BIMMipMap};
-use image::{RgbaImage, ImageFormat, io::Reader};
-use texpresso::{Algorithm, Params, COLOUR_WEIGHTS_PERCEPTUAL};
-use fast_image_resize::{Image, PixelType, MulDiv, Resizer, ResizeAlg, FilterType};
+use bim::{BIMHeader, BIMMipMap, TextureFormat, TextureMaterialKind};
+use fast_image_resize::{FilterType, Image, MulDiv, PixelType, ResizeAlg, Resizer};
+use image::{ImageFormat, io::Reader as ImageReader, RgbaImage};
+use texpresso::{Algorithm, Params};
 
 // Compress data with oodle's kraken
 fn kraken_compress(vec: &mut Vec<u8>) -> Result<Vec<u8>, String> {
@@ -88,7 +86,7 @@ fn compress_bcn(format: TextureFormat, image: &[u8], width: usize, height: usize
         // Compression parameters
         static COMPRESS_PARAMS: Params = Params {
             algorithm: Algorithm::RangeFit,
-            weights: COLOUR_WEIGHTS_PERCEPTUAL,
+            weights: texpresso::COLOUR_WEIGHTS_PERCEPTUAL,
             weigh_colour_by_alpha: false
         };
 
@@ -339,7 +337,7 @@ fn handle_textures(paths: Vec<String>) -> u32 {
             }
 
             // Load image
-            let mut src_reader = match Reader::open(file_path) {
+            let mut src_reader = match ImageReader::open(file_path) {
                 Ok(reader) => reader,
                 Err(e) => {
                     writeln!(&mut output, "ERROR: Failed to load '{}': {}", path, e).unwrap();
@@ -427,7 +425,7 @@ fn handle_textures(paths: Vec<String>) -> u32 {
                 }
             };
 
-            match output_file.write(&bim_bytes) {
+            match output_file.write_all(&bim_bytes) {
                 Ok(_) => (),
                 Err(e) => {
                     writeln!(&mut output, "ERROR: Failed to write to output file: {}", e).unwrap();

@@ -1,6 +1,3 @@
-#[cfg(target_os = "windows")]
-extern crate windows_sys;
-
 // Simulates the 'pause' system command on Windows
 #[cfg(target_os = "windows")]
 pub fn press_any_key() {

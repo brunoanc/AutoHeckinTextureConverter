@@ -1,5 +1,3 @@
-extern crate texpresso;
-
 use texpresso::Format;
 
 // Texture material kind for bimage enum
