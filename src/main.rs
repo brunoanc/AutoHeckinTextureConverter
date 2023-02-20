@@ -7,7 +7,7 @@ mod bim;
 mod utils;
 mod ooz;
 
-use std::{env, process, cmp, thread, mem, slice};
+use std::{env, process, cmp, thread, mem};
 use std::fs::File;
 use std::num::NonZeroU32;
 use std::fmt::Write as FmtWrite;
@@ -123,6 +123,7 @@ fn convert_to_bimage(src_img: RgbaImage, file_name: String, stripped_file_name: 
                                 + block_size * 3;
 
     // BIM bytes
+    let mut texture = Vec::with_capacity(added_texture_approx);
     let mut bim = Vec::with_capacity(mem::size_of::<BIMHeader>()
         + mem::size_of::<BIMMipMap>() * mipmap_count as usize + added_texture_approx);
 
@@ -136,134 +137,137 @@ fn convert_to_bimage(src_img: RgbaImage, file_name: String, stripped_file_name: 
         ..Default::default()
     }.to_bytes());
 
-    // Create all mipmaps
-    let mut handles = Vec::new();
-
     // Pointer to src_img bytes
     let mut src_img_buf = src_img.into_raw();
-    let src_img_len = src_img_buf.len();
-    let src_img_ptr = src_img_buf.as_mut_ptr() as usize;
 
-    for i in 0..mipmap_count {
-        let handle = thread::spawn(move || {
-            let power = 2_u32.pow(i);
+    // Create source container for resize
+    let mut resize_src = Image::from_slice_u8(NonZeroU32::new(width).unwrap(),
+        NonZeroU32::new(height).unwrap(), src_img_buf.as_mut_slice(), PixelType::U8x4).unwrap();
 
-            // Get the mip's width and height
-            let mut mip_width = width / power;
-            let mut mip_height = height / power;
+    // Multiply RGB by alpha (needed for resize algorithm)
+    let alpha_mul_div = MulDiv::default();
+    alpha_mul_div.multiply_alpha_inplace(&mut resize_src.view_mut()).unwrap();
 
-            // Make sure they're not 0
-            if mip_width == 0 {
-                mip_width = 1;
-            }
+    let resize_src_arc = Arc::new(resize_src);
+    let alpha_mul_div_arc = Arc::new(alpha_mul_div);
 
-            if mip_height == 0 {
-                mip_height = 1;
-            }
+    thread::scope(|s| {
+        // Create all mipmaps
+        let mut handles = Vec::new();
 
-            // Create source container for resize
-            let mut resize_src = unsafe {
-                Image::from_slice_u8(NonZeroU32::new(width).unwrap(), NonZeroU32::new(height).unwrap(),
-                    slice::from_raw_parts_mut(src_img_ptr as *mut u8, src_img_len), PixelType::U8x4).unwrap()
-            };
+        for i in 0..mipmap_count {
+            let resize_src_clone = resize_src_arc.clone();
+            let alpha_mul_div_clone = alpha_mul_div_arc.clone();
 
-            // Multiply RGB by alpha (needed for resize algorithm)
-            let alpha_mul_div = MulDiv::default();
-            alpha_mul_div.multiply_alpha_inplace(&mut resize_src.view_mut()).unwrap();
+            let handle = s.spawn(move || {
+                let power = 2_u32.pow(i);
 
-            // Create dest container for resize
-            let mut resize_dst = Image::new(NonZeroU32::new(mip_width).unwrap(),
-                NonZeroU32::new(mip_height).unwrap(), resize_src.pixel_type());
+                // Get the mip's width and height
+                let mut mip_width = width / power;
+                let mut mip_height = height / power;
 
-            // Resize using Box filter
-            let mut resizer = Resizer::new(ResizeAlg::Convolution(FilterType::Box));
-            resizer.resize(&resize_src.view(), &mut resize_dst.view_mut()).unwrap();
+                // Make sure they're not 0
+                if mip_width == 0 {
+                    mip_width = 1;
+                }
 
-            // Divide RGB by alpha
-            alpha_mul_div.divide_alpha_inplace(&mut resize_dst.view_mut()).unwrap();
+                if mip_height == 0 {
+                    mip_height = 1;
+                }
 
-            // Get resized bytes
-            let mut mip_img_bytes = resize_dst.buffer().to_vec();
+                // Create dest container for resize
+                let mut resize_dst = Image::new(NonZeroU32::new(mip_width).unwrap(),
+                    NonZeroU32::new(mip_height).unwrap(), resize_src_clone.pixel_type());
 
-            // Get division remainder
-            let width_missing = 4 - mip_width % 4;
-            let height_missing = 4 - mip_height % 4;
+                // Resize using Box filter
+                let mut resizer = Resizer::new(ResizeAlg::Convolution(FilterType::Box));
+                resizer.resize(&resize_src_clone.view(), &mut resize_dst.view_mut()).unwrap();
 
-            // Add horizontal padding bytes
-            if width_missing != 4 {
-                let new_mip_width = mip_width + width_missing;
-                let stride = new_mip_width as usize * 4;
+                // Divide RGB by alpha
+                alpha_mul_div_clone.divide_alpha_inplace(&mut resize_dst.view_mut()).unwrap();
 
-                // Iterate through rows
-                for mut i in (0..stride * mip_height as usize).step_by(stride) {
-                    i += mip_width as usize * 4;
+                // Get resized bytes
+                let mut mip_img_bytes = resize_dst.buffer().to_vec();
 
-                    // Repeat the last pixel
-                    let mut last_pixel = vec![0_u8; width_missing as usize * 4];
+                // Get division remainder
+                let width_missing = 4 - mip_width % 4;
+                let height_missing = 4 - mip_height % 4;
 
-                    for j in 0..width_missing as usize {
-                        last_pixel[j * 4..j * 4 + 4].copy_from_slice(&mip_img_bytes[i - 4..i]);
+                // Add horizontal padding bytes
+                if width_missing != 4 {
+                    let new_mip_width = mip_width + width_missing;
+                    let stride = new_mip_width as usize * 4;
+
+                    // Iterate through rows
+                    for mut i in (0..stride * mip_height as usize).step_by(stride) {
+                        i += mip_width as usize * 4;
+
+                        // Repeat the last pixel
+                        let mut last_pixel = vec![0_u8; width_missing as usize * 4];
+
+                        for j in 0..width_missing as usize {
+                            last_pixel[j * 4..j * 4 + 4].copy_from_slice(&mip_img_bytes[i - 4..i]);
+                        }
+
+                        mip_img_bytes.splice(i..i, last_pixel.iter().cloned());
                     }
 
-                    mip_img_bytes.splice(i..i, last_pixel.iter().cloned());
+                    mip_width = new_mip_width;
                 }
 
-                mip_width = new_mip_width;
-            }
+                // Add vertical padding bytes
+                if height_missing != 4 {
+                    // Get last row of pixels
+                    let mut last_row = vec![0_u8; mip_width as usize * 4];
+                    let size = mip_img_bytes.len();
+                    last_row.copy_from_slice(&mip_img_bytes[size - mip_width as usize * 4..size]);
 
-            // Add vertical padding bytes
-            if height_missing != 4 {
-                // Get last row of pixels
-                let mut last_row = vec![0_u8; mip_width as usize * 4];
-                let size = mip_img_bytes.len();
-                last_row.copy_from_slice(&mip_img_bytes[size - mip_width as usize * 4..size]);
+                    // Duplicate last row
+                    for i in 0..height_missing as usize {
+                        let insert_index = size + mip_width as usize * 4 * i;
+                        mip_img_bytes.splice(insert_index..insert_index, last_row.iter().cloned());
+                    }
 
-                // Duplicate last row
-                for i in 0..height_missing as usize {
-                    let insert_index = size + mip_width as usize * 4 * i;
-                    mip_img_bytes.splice(insert_index..insert_index, last_row.iter().cloned());
+                    mip_height += height_missing;
                 }
 
-                mip_height += height_missing;
-            }
+                // Compress to BCn format
+                let mip_bytes = compress_bcn(format, &mip_img_bytes, mip_width as usize, mip_height as usize);
 
-            // Compress to BCn format
-            let mip_bytes = compress_bcn(format, &mip_img_bytes, mip_width as usize, mip_height as usize);
+                // Create mip header
+                let bim_mip = BIMMipMap {
+                    mip_level: i as i64,
+                    mip_pixel_width: mip_width,
+                    mip_pixel_height: mip_height,
+                    decompressed_size: mip_bytes.len() as u32,
+                    compressed_size: mip_bytes.len() as u32,
+                    ..Default::default()
+                };
 
-            // Create mip header
-            let bim_mip = BIMMipMap {
-                mip_level: i as i64,
-                mip_pixel_width: mip_width,
-                mip_pixel_height: mip_height,
-                decompressed_size: mip_bytes.len() as u32,
-                compressed_size: mip_bytes.len() as u32,
-                ..Default::default()
-            };
+                (mip_bytes, bim_mip)
+            });
 
-            (mip_bytes, bim_mip)
-        });
+            handles.push(handle);
+        }
 
-        handles.push(handle);
-    }
+        let mut bim_mip_cumulative_size = 0_u32;
 
-    let mut texture = Vec::with_capacity(added_texture_approx);
-    let mut bim_mip_cumulative_size = 0_u32;
+        // Join all threads
+        for handle in handles {
+            let mut mipmap = handle.join().unwrap();
 
-    // Join all threads
-    for handle in handles {
-        let mut mipmap = handle.join().unwrap();
+            // Append texture bytes
+            texture.append(&mut mipmap.0);
 
-        // Append texture bytes
-        texture.append(&mut mipmap.0);
+            // Change cumulative size
+            let mut bim_mip = mipmap.1;
+            bim_mip.cumulative_size_streamdb = bim_mip_cumulative_size;
+            bim_mip_cumulative_size += bim_mip.compressed_size;
 
-        // Change cumulative size
-        let mut bim_mip = mipmap.1;
-        bim_mip.cumulative_size_streamdb = bim_mip_cumulative_size;
-        bim_mip_cumulative_size += bim_mip.compressed_size;
-
-        // Append mip bytes
-        bim.extend_from_slice(&bim_mip.to_bytes());
-    }
+            // Append mip bytes
+            bim.extend_from_slice(&bim_mip.to_bytes());
+        }
+    });
 
     // Change last bytes
     let texture_len = texture.len();
