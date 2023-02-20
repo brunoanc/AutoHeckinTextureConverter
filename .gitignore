@@ -5,7 +5,11 @@ target/
 **/*.DS_Store
 
 # Sample files used for testing
-sample*
+*.png
+*.tga
+*$bc?
+*$bc?-?
+*$bc?-??
 
 # IDE files
 .idea/
