@@ -14,7 +14,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Mutex, Arc};
 use bc7e::CompressBlockParams;
 use bim::{TextureMaterialKind, TextureFormat, BIMHeader, BIMMipMap};
-use image::{DynamicImage, GenericImageView, imageops::FilterType, io::Reader};
+use image::{DynamicImage, GenericImageView, ImageFormat, imageops::FilterType, io::Reader};
 use texpresso::{Algorithm, Params, COLOUR_WEIGHTS_PERCEPTUAL};
 
 // Compress data with oodle's kraken
@@ -310,13 +310,15 @@ fn handle_textures(paths: Vec<String>) -> u32 {
             }
 
             // Load image
-            let src_reader = match Reader::open(file_path).and_then(|r| r.with_guessed_format()) {
+            let mut src_reader = match Reader::open(file_path) {
                 Ok(reader) => reader,
                 Err(e) => {
                     writeln!(&mut output, "ERROR: Failed to load '{}': {}", path, e).unwrap();
                     return output;
                 }
             };
+
+            src_reader.set_format(ImageFormat::Png);
 
             let src_img = match src_reader.decode() {
                 Ok(img) => DynamicImage::ImageRgba8(img.into_rgba8()),
