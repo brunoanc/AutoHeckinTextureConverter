@@ -43,7 +43,7 @@ fn kraken_compress(vec: &mut Vec<u8>) -> Result<Vec<u8>, String> {
 }
 
 // Compress into BCn format
-fn compress_bcn(format: TextureFormat, image: &Vec<u8>, width: usize, height: usize) -> Vec<u8> {
+fn compress_bcn(format: TextureFormat, image: &[u8], width: usize, height: usize) -> Vec<u8> {
     if format == TextureFormat::FmtBc7 {
         // Compress blocks 64 per 64
         let blocks_x = width / 4;
@@ -92,7 +92,7 @@ fn compress_bcn(format: TextureFormat, image: &Vec<u8>, width: usize, height: us
         // Compress using texpresso
         let tex_format = format.as_texpresso_format().unwrap();
         let mut compressed = vec![0u8; tex_format.compressed_size(width, height)];
-        tex_format.compress(&image, width, height, COMPRESS_PARAMS, &mut compressed);
+        tex_format.compress(image, width, height, COMPRESS_PARAMS, &mut compressed);
 
         compressed
     }
@@ -234,7 +234,7 @@ fn convert_to_bimage(src_img: DynamicImage, file_name: String, stripped_file_nam
         // Change cumulative size
         let mut bim_mip = mipmap.1;
         bim_mip.cumulative_size_streamdb = bim_mip_cumulative_size;
-        bim_mip_cumulative_size += bim_mip.compressed_size as u32;
+        bim_mip_cumulative_size += bim_mip.compressed_size;
 
         // Append mip bytes
         bim.extend_from_slice(&bim_mip.to_bytes());
