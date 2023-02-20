@@ -15,12 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: ubuntu-latest
-            ispc: ispc-v1.18.0-linux
-
-          - os: windows-latest
-            ispc: ispc-v1.18.0-windows
+        os: [ubuntu-latest, windows-latest]
 
     runs-on: ${{ matrix.os }}
 
