@@ -1,8 +1,9 @@
 // Simulates the 'pause' system command on Windows
 #[cfg(target_os = "windows")]
 pub fn press_any_key() {
-    use windows_sys::Win32::System::Console::GetConsoleProcessList;
     use std::io::{stdin, Read};
+
+    use windows_sys::Win32::System::Console::GetConsoleProcessList;
 
     // Get process count
     let process_count: u32;

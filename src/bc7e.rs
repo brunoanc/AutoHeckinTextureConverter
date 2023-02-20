@@ -40,7 +40,7 @@ pub struct CompressBlockParams {
     pub pbit_search: bool,
     pub mode6_only: bool,
     pub unused0: bool,
-    pub opaque_settings:OpaqueSettings,
+    pub opaque_settings: OpaqueSettings,
     pub alpha_settings: AlphaSettings
 }
 
@@ -87,6 +87,7 @@ extern "C" {
     #[link_name = "bc7e_compress_block_init"]
     pub fn compress_block_init();
     #[link_name = "bc7e_compress_blocks"]
-    pub fn compress_blocks(num_blocks: u32, blocks: *mut u64,
-        pixels_rgba: *const u32, comp_params: *const CompressBlockParams);
+    pub fn compress_blocks(
+        num_blocks: u32, blocks: *mut u64, pixels_rgba: *const u32, comp_params: *const CompressBlockParams
+    );
 }

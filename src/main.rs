@@ -4,18 +4,22 @@ mod ooz;
 mod utils;
 
 use std::{
-    cmp, env, mem, process, thread,
-    fmt::Write as _, io::Write as _,
+    cmp, env,
+    fmt::Write as _,
     fs::File,
+    io::Write as _,
+    mem,
     num::NonZeroU32,
     path::{Path, PathBuf},
-    sync::{Arc, Mutex}
+    process,
+    sync::{Arc, Mutex},
+    thread
 };
 
 use bc7e::CompressBlockParams;
 use bim::{BIMHeader, BIMMipMap, TextureFormat, TextureMaterialKind};
 use fast_image_resize::{FilterType, Image, MulDiv, PixelType, ResizeAlg, Resizer};
-use image::{ImageFormat, io::Reader as ImageReader, RgbaImage};
+use image::{io::Reader as ImageReader, ImageFormat, RgbaImage};
 use texpresso::{Algorithm, Params};
 
 // Compress data with oodle's kraken
@@ -65,7 +69,8 @@ fn compress_bcn(format: TextureFormat, image: &[u8], width: usize, height: usize
                         let coord_x = (bx + b) * 16;
                         let coord_y = by * 16 + y * 4;
                         let start = coord_x + width * coord_y;
-                        pixels[b * 64 + y * 16..b * 64 + y * 16 + 16].copy_from_slice(&image[start..start + 16]);
+                        pixels[b * 64 + y * 16..b * 64 + y * 16 + 16]
+                            .copy_from_slice(&image[start..start + 16]);
                     }
                 }
 
@@ -73,9 +78,12 @@ fn compress_bcn(format: TextureFormat, image: &[u8], width: usize, height: usize
                 static COMPRESS_PARAMS: CompressBlockParams = CompressBlockParams::ultrafast();
 
                 unsafe {
-                    bc7e::compress_blocks(num_blocks_to_process as u32,
+                    bc7e::compress_blocks(
+                        num_blocks_to_process as u32,
                         packed_blocks.as_mut_ptr().add((bx + by * blocks_x) * 16) as *mut u64,
-                        pixels.as_mut_ptr() as *mut u32, &COMPRESS_PARAMS);
+                        pixels.as_mut_ptr() as *mut u32,
+                        &COMPRESS_PARAMS
+                    );
                 }
             }
         }
@@ -100,8 +108,9 @@ fn compress_bcn(format: TextureFormat, image: &[u8], width: usize, height: usize
 }
 
 // Convert texture to bimage format used by the game
-fn convert_to_bimage(src_img: RgbaImage, file_name: String, stripped_file_name: String,
-    format: TextureFormat, compress: bool) -> Result<Vec<u8>, String> {
+fn convert_to_bimage(
+    src_img: RgbaImage, file_name: String, stripped_file_name: String, format: TextureFormat, compress: bool
+) -> Result<Vec<u8>, String> {
     // Get width and height
     let (width, height) = src_img.dimensions();
 
@@ -112,39 +121,50 @@ fn convert_to_bimage(src_img: RgbaImage, file_name: String, stripped_file_name: 
     // Derived from sumation of mipmap approx
     let four_power = 4_u32.pow(mipmap_count) as usize;
     let block_size = format.block_size().unwrap() as usize;
-    let added_texture_approx = (4
-                                * block_size
-                                * ((width as usize + 3) / 4)
-                                * ((height as usize + 3) / 4)
-                                * (four_power - 1))
-                                / (3 * four_power)
-                                + block_size * 3;
+    let added_texture_approx =
+        (4 * block_size * ((width as usize + 3) / 4) * ((height as usize + 3) / 4) * (four_power - 1))
+            / (3 * four_power)
+            + block_size * 3;
 
     // BIM bytes
     let mut texture = Vec::with_capacity(added_texture_approx);
-    let mut bim = Vec::with_capacity(mem::size_of::<BIMHeader>()
-        + mem::size_of::<BIMMipMap>() * mipmap_count as usize + added_texture_approx);
+    let mut bim = Vec::with_capacity(
+        mem::size_of::<BIMHeader>()
+            + mem::size_of::<BIMMipMap>() * mipmap_count as usize
+            + added_texture_approx
+    );
 
     // Create BIM header and append it to bim
-    bim.extend_from_slice(&BIMHeader {
-        pixel_width: width,
-        pixel_height: height,
-        mip_count: mipmap_count,
-        texture_format: format as u32,
-        texture_material_kind: TextureMaterialKind::from_filename(file_name, stripped_file_name, format) as u32,
-        ..Default::default()
-    }.to_bytes());
+    bim.extend_from_slice(
+        &BIMHeader {
+            pixel_width: width,
+            pixel_height: height,
+            mip_count: mipmap_count,
+            texture_format: format as u32,
+            texture_material_kind: TextureMaterialKind::from_filename(file_name, stripped_file_name, format)
+                as u32,
+            ..Default::default()
+        }
+        .to_bytes()
+    );
 
     // Pointer to src_img bytes
     let mut src_img_buf = src_img.into_raw();
 
     // Create source container for resize
-    let mut resize_src = Image::from_slice_u8(NonZeroU32::new(width).unwrap(),
-        NonZeroU32::new(height).unwrap(), src_img_buf.as_mut_slice(), PixelType::U8x4).unwrap();
+    let mut resize_src = Image::from_slice_u8(
+        NonZeroU32::new(width).unwrap(),
+        NonZeroU32::new(height).unwrap(),
+        src_img_buf.as_mut_slice(),
+        PixelType::U8x4
+    )
+    .unwrap();
 
     // Multiply RGB by alpha (needed for resize algorithm)
     let alpha_mul_div = MulDiv::default();
-    alpha_mul_div.multiply_alpha_inplace(&mut resize_src.view_mut()).unwrap();
+    alpha_mul_div
+        .multiply_alpha_inplace(&mut resize_src.view_mut())
+        .unwrap();
 
     let resize_src_arc = Arc::new(resize_src);
     let alpha_mul_div_arc = Arc::new(alpha_mul_div);
@@ -174,15 +194,22 @@ fn convert_to_bimage(src_img: RgbaImage, file_name: String, stripped_file_name: 
                 }
 
                 // Create dest container for resize
-                let mut resize_dst = Image::new(NonZeroU32::new(mip_width).unwrap(),
-                    NonZeroU32::new(mip_height).unwrap(), resize_src_clone.pixel_type());
+                let mut resize_dst = Image::new(
+                    NonZeroU32::new(mip_width).unwrap(),
+                    NonZeroU32::new(mip_height).unwrap(),
+                    resize_src_clone.pixel_type()
+                );
 
                 // Resize using Box filter
                 let mut resizer = Resizer::new(ResizeAlg::Convolution(FilterType::Box));
-                resizer.resize(&resize_src_clone.view(), &mut resize_dst.view_mut()).unwrap();
+                resizer
+                    .resize(&resize_src_clone.view(), &mut resize_dst.view_mut())
+                    .unwrap();
 
                 // Divide RGB by alpha
-                alpha_mul_div_clone.divide_alpha_inplace(&mut resize_dst.view_mut()).unwrap();
+                alpha_mul_div_clone
+                    .divide_alpha_inplace(&mut resize_dst.view_mut())
+                    .unwrap();
 
                 // Get resized bytes
                 let mut mip_img_bytes = resize_dst.buffer().to_vec();
@@ -271,7 +298,9 @@ fn convert_to_bimage(src_img: RgbaImage, file_name: String, stripped_file_name: 
     let texture_len = texture.len();
 
     if format == TextureFormat::FmtBc5 {
-        texture[texture_len - 16..].clone_from_slice(&[0x87, 0x86, 0x49, 0x92, 0x24, 0x49, 0x92, 0x24, 0x86, 0x85, 0x49, 0x92, 0x24, 0x49, 0x92, 0x2]);
+        texture[texture_len - 16..].clone_from_slice(&[
+            0x87, 0x86, 0x49, 0x92, 0x24, 0x49, 0x92, 0x24, 0x86, 0x85, 0x49, 0x92, 0x24, 0x49, 0x92, 0x2
+        ]);
     }
     else {
         texture[texture_len - 4..].clone_from_slice(&[0_u8, 0_u8, 0_u8, 0_u8]);
@@ -310,7 +339,14 @@ fn handle_textures(paths: Vec<String>) -> u32 {
             // Get texture's format and stripped filename
             let file_path = Path::new(&path);
             let file_name = file_path.file_name().unwrap().to_str().unwrap().to_owned();
-            let stripped_file_name = file_name.split('$').next().unwrap().split('.').next().unwrap().to_owned();
+            let stripped_file_name = file_name
+                .split('$')
+                .next()
+                .unwrap()
+                .split('.')
+                .next()
+                .unwrap()
+                .to_owned();
 
             writeln!(&mut output, "Converting '{}'...", file_name).unwrap();
 
@@ -359,13 +395,14 @@ fn handle_textures(paths: Vec<String>) -> u32 {
             let compress = env::var("AUTOHECKIN_SKIP_COMPRESSION").is_err();
 
             // Convert image to bimage format
-            let bim_bytes = match convert_to_bimage(src_img, file_name.clone(), stripped_file_name, format, compress) {
-                Ok(vec) => vec,
-                Err(e) => {
-                    writeln!(&mut output, "ERROR: Failed to convert '{}' to DDS: {}", path, e).unwrap();
-                    return output;
-                }
-            };
+            let bim_bytes =
+                match convert_to_bimage(src_img, file_name.clone(), stripped_file_name, format, compress) {
+                    Ok(vec) => vec,
+                    Err(e) => {
+                        writeln!(&mut output, "ERROR: Failed to convert '{}' to DDS: {}", path, e).unwrap();
+                        return output;
+                    }
+                };
 
             // Get output filename
             let new_extension: &str;
@@ -433,7 +470,12 @@ fn handle_textures(paths: Vec<String>) -> u32 {
                 }
             }
 
-            writeln!(&mut output, "Successfully converted '{}' into '{}'.", file_name, new_file_name).unwrap();
+            writeln!(
+                &mut output,
+                "Successfully converted '{}' into '{}'.",
+                file_name, new_file_name
+            )
+            .unwrap();
             *counter += 1;
             output
         });
