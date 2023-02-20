@@ -65,7 +65,7 @@ fn helper_convert_to_bimage(file_path: &str, format: TextureFormat, expected_bim
         .to_owned();
 
     // Load image
-    let mut src_reader = match Reader::open(file_path) {
+    let mut src_reader = match ImageReader::open(file_path) {
         Ok(reader) => reader,
         Err(_) => panic!("Could not load image")
     };
