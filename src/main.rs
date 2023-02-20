@@ -454,7 +454,8 @@ fn handle_textures(paths: Vec<String>) -> u32 {
 
 fn main() {
     // Print program name
-    println!("Auto Heckin' Texture Converter Rust Rewrite by PowerBall253 :D");
+    const VERSION: &str = env!("CARGO_PKG_VERSION");
+    println!("Auto Heckin' Texture Converter v{} by PowerBall253 :)", VERSION);
 
     // Get args
     let mut args: Vec<String> = env::args().collect();
