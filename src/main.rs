@@ -460,7 +460,7 @@ fn main() {
     // Display help if no arguments are provided
     if args.is_empty() {
         println!("\nUsage:");
-        println!("{} [texture1] [texture2] [...]\n", program);
+        println!("{} [texture1.png] [texture2.png] [...]\n", program);
         println!("Alternatively, drag files onto this executable.");
 
         // Exit

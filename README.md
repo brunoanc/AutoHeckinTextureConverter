@@ -4,7 +4,7 @@ Texture converter for DOOM Eternal.
 Texture modding guides are available [here](https://wiki.eternalmods.com/books/eternal-texture-mods-a-comprehensive-guide).
 
 ## Usage
-Drag and drop textures onto it, or pass them as arguments from the terminal.
+Drag and drop textures (in PNG format) onto it, or pass them as arguments from the terminal.
 
 ## Compiling
 1. Install Rust by following the instructions [here](https://www.rust-lang.org/tools/install).
