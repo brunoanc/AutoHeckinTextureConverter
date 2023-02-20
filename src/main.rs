@@ -1,21 +1,24 @@
 extern crate image;
 extern crate texpresso;
+extern crate fast_image_resize;
 
 mod bc7e;
 mod bim;
 mod utils;
 mod ooz;
 
-use std::{env, process, cmp, thread, mem};
+use std::{env, process, cmp, thread, mem, slice};
 use std::fs::File;
+use std::num::NonZeroU32;
 use std::fmt::Write as FmtWrite;
 use std::io::Write as IoWrite;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, Arc};
 use bc7e::CompressBlockParams;
 use bim::{TextureMaterialKind, TextureFormat, BIMHeader, BIMMipMap};
-use image::{DynamicImage, GenericImageView, ImageFormat, imageops::FilterType, io::Reader};
+use image::{RgbaImage, ImageFormat, io::Reader};
 use texpresso::{Algorithm, Params, COLOUR_WEIGHTS_PERCEPTUAL};
+use fast_image_resize::{Image, PixelType, MulDiv, Resizer, ResizeAlg, FilterType};
 
 // Compress data with oodle's kraken
 fn kraken_compress(vec: &mut Vec<u8>) -> Result<Vec<u8>, String> {
@@ -99,7 +102,7 @@ fn compress_bcn(format: TextureFormat, image: &[u8], width: usize, height: usize
 }
 
 // Convert texture to bimage format used by the game
-fn convert_to_bimage(src_img: DynamicImage, file_name: String, stripped_file_name: String,
+fn convert_to_bimage(src_img: RgbaImage, file_name: String, stripped_file_name: String,
     format: TextureFormat, compress: bool) -> Result<Vec<u8>, String> {
     // Get width and height
     let (width, height) = src_img.dimensions();
@@ -135,11 +138,13 @@ fn convert_to_bimage(src_img: DynamicImage, file_name: String, stripped_file_nam
 
     // Create all mipmaps
     let mut handles = Vec::new();
-    let src_img_arc = Arc::new(src_img);
+
+    // Pointer to src_img bytes
+    let mut src_img_buf = src_img.into_raw();
+    let src_img_len = src_img_buf.len();
+    let src_img_ptr = src_img_buf.as_mut_ptr() as usize;
 
     for i in 0..mipmap_count {
-        let img = src_img_arc.clone();
-
         let handle = thread::spawn(move || {
             let power = 2_u32.pow(i);
 
@@ -156,9 +161,29 @@ fn convert_to_bimage(src_img: DynamicImage, file_name: String, stripped_file_nam
                 mip_height = 1;
             }
 
-            // Get resized image
-            let mip_img = img.resize_exact(mip_width, mip_height, FilterType::Triangle);
-            let mut mip_img_bytes = mip_img.as_bytes().to_vec();
+            // Create source container for resize
+            let mut resize_src = unsafe {
+                Image::from_slice_u8(NonZeroU32::new(width).unwrap(), NonZeroU32::new(height).unwrap(),
+                    slice::from_raw_parts_mut(src_img_ptr as *mut u8, src_img_len), PixelType::U8x4).unwrap()
+            };
+
+            // Multiply RGB by alpha (needed for resize algorithm)
+            let alpha_mul_div = MulDiv::default();
+            alpha_mul_div.multiply_alpha_inplace(&mut resize_src.view_mut()).unwrap();
+
+            // Create dest container for resize
+            let mut resize_dst = Image::new(NonZeroU32::new(mip_width).unwrap(),
+                NonZeroU32::new(mip_height).unwrap(), resize_src.pixel_type());
+
+            // Resize using Box filter
+            let mut resizer = Resizer::new(ResizeAlg::Convolution(FilterType::Box));
+            resizer.resize(&resize_src.view(), &mut resize_dst.view_mut()).unwrap();
+
+            // Divide RGB by alpha
+            alpha_mul_div.divide_alpha_inplace(&mut resize_dst.view_mut()).unwrap();
+
+            // Get resized bytes
+            let mut mip_img_bytes = resize_dst.buffer().to_vec();
 
             // Get division remainder
             let width_missing = 4 - mip_width % 4;
@@ -321,7 +346,7 @@ fn handle_textures(paths: Vec<String>) -> u32 {
             src_reader.set_format(ImageFormat::Png);
 
             let src_img = match src_reader.decode() {
-                Ok(img) => DynamicImage::ImageRgba8(img.into_rgba8()),
+                Ok(img) => img.into_rgba8(),
                 Err(e) => {
                     writeln!(&mut output, "ERROR: Failed to load '{}': {}", path, e).unwrap();
                     return output;

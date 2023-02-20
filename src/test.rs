@@ -42,8 +42,15 @@ fn helper_convert_to_bimage(file_path: &str, format: TextureFormat, expected_bim
     let stripped_file_name = file_name.split('$').next().unwrap().split('.').next().unwrap().to_owned();
 
     // Load image
-    let src_img = match image::open(file_path) {
-        Ok(img) => DynamicImage::ImageRgba8(img.into_rgba8()),
+    let mut src_reader = match Reader::open(file_path) {
+        Ok(reader) => reader,
+        Err(_) => panic!("Could not load image")
+    };
+
+    src_reader.set_format(ImageFormat::Png);
+
+    let src_img = match src_reader.decode() {
+        Ok(img) => img.into_rgba8(),
         Err(_) => panic!("Could not load image")
     };
 
