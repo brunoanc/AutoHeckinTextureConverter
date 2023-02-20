@@ -1,6 +1,5 @@
 extern crate texpresso;
 
-use std::cmp;
 use texpresso::Format;
 
 // Texture material kind for bimage enum
@@ -146,7 +145,7 @@ pub enum TextureFormat {
 
 impl TextureFormat {
     // Get block size for format
-    fn block_size(&self) -> Option<u32> {
+    pub fn block_size(&self) -> Option<u32> {
         match self {
             TextureFormat::FmtBc1Srgb => Some(8),
             TextureFormat::FmtBc3 => Some(16),
@@ -167,35 +166,30 @@ impl TextureFormat {
             _ => Err("Unsupported target BCn format".into())
         }
     }
-
-    // Calculate mipmap size using block size
-    pub fn calculate_mipmap_size(&self, width: u32, height: u32) -> Option<u32> {
-        Some(cmp::max(1, (width + 3) / 4) * cmp::max(1, (height + 3) / 4) * self.block_size()?)
-    }
 }
 
 // BIM header
 pub struct BIMHeader {
     pub signature: [u8; 3],
     pub version: u8,
-    pub texture_type: i32,
-    pub texture_material_kind: i32,
-    pub pixel_width: i32,
-    pub pixel_height: i32,
-    pub depth: i32,
-    pub mip_count: i32,
+    pub texture_type: u32,
+    pub texture_material_kind: u32,
+    pub pixel_width: u32,
+    pub pixel_height: u32,
+    pub depth: u32,
+    pub mip_count: u32,
     pub mip_level: i64,
     pub unk_float_1: f32,
     pub bool_is_environment_map: u8,
-    pub texture_format: i32,
-    pub always_7: i32,
-    pub null_padding: i32,
+    pub texture_format: u32,
+    pub always_7: u32,
+    pub null_padding: u32,
     pub atlas_padding: i16,
     pub bool_is_streamed: u8,
     pub unk_bool: u8,
     pub bool_no_mips: u8,
     pub bool_fft_bloom: u8,
-    pub streamdb_mip_count: i32
+    pub streamdb_mip_count: u32
 }
 
 impl Default for BIMHeader {
@@ -258,13 +252,13 @@ impl BIMHeader {
 // BIM mipmap
 pub struct BIMMipMap {
     pub mip_level: i64,
-    pub mip_pixel_width: i32,
-    pub mip_pixel_height: i32,
-    pub unknown_flag: i32,
-    pub decompressed_size: i32,
-    pub flag_is_compressed: i32,
-    pub compressed_size: i32,
-    pub cumulative_size_streamdb: i32
+    pub mip_pixel_width: u32,
+    pub mip_pixel_height: u32,
+    pub unknown_flag: u32,
+    pub decompressed_size: u32,
+    pub flag_is_compressed: u32,
+    pub compressed_size: u32,
+    pub cumulative_size_streamdb: u32
 }
 
 impl Default for BIMMipMap {

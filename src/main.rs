@@ -6,7 +6,7 @@ mod bim;
 mod utils;
 mod ooz;
 
-use std::{env, process, cmp, thread};
+use std::{env, process, cmp, thread, mem};
 use std::fs::File;
 use std::fmt::Write as FmtWrite;
 use std::io::Write as IoWrite;
@@ -15,7 +15,7 @@ use std::sync::{Mutex, Arc};
 use bc7e::CompressBlockParams;
 use bim::{TextureMaterialKind, TextureFormat, BIMHeader, BIMMipMap};
 use image::{DynamicImage, GenericImageView, imageops::FilterType, io::Reader};
-use texpresso::{Algorithm, Params, COLOUR_WEIGHTS_UNIFORM};
+use texpresso::{Algorithm, Params, COLOUR_WEIGHTS_PERCEPTUAL};
 
 // Compress data with oodle's kraken
 fn kraken_compress(vec: &mut Vec<u8>) -> Result<Vec<u8>, String> {
@@ -42,25 +42,94 @@ fn kraken_compress(vec: &mut Vec<u8>) -> Result<Vec<u8>, String> {
     Ok(comp_vec)
 }
 
-// Compress texture into dds with mipmaps (no header)
+// Compress into BCn format
+fn compress_bcn(format: TextureFormat, image: &Vec<u8>, width: usize, height: usize) -> Vec<u8> {
+    if format == TextureFormat::FmtBc7 {
+        // Compress blocks 64 per 64
+        let blocks_x = width / 4;
+        let blocks_y = height / 4;
+        let mut packed_blocks = vec![0_u8; blocks_x * blocks_y * 16];
+
+        for by in 0..blocks_y {
+            let n = 64;
+
+            for bx in (0..blocks_x).step_by(n) {
+                let num_blocks_to_process = cmp::min(blocks_x - bx, n);
+
+                let mut pixels = vec![0_u8; 64 * n];
+
+                // Get blocks
+                for b in 0..num_blocks_to_process {
+                    for y in 0_usize..4_usize {
+                        let coord_x = (bx + b) * 16;
+                        let coord_y = by * 16 + y * 4;
+                        let start = coord_x + width * coord_y;
+                        pixels[b * 64 + y * 16..b * 64 + y * 16 + 16].copy_from_slice(&image[start..start + 16]);
+                    }
+                }
+
+                // Compress to BC7 using bc7e
+                static COMPRESS_PARAMS: CompressBlockParams = CompressBlockParams::ultrafast();
+
+                unsafe {
+                    bc7e::compress_blocks(num_blocks_to_process as u32,
+                        packed_blocks.as_mut_ptr().add((bx + by * blocks_x) * 16) as *mut u64,
+                        pixels.as_mut_ptr() as *mut u32, &COMPRESS_PARAMS);
+                }
+            }
+        }
+
+        packed_blocks
+    }
+    else {
+        // Compression parameters
+        static COMPRESS_PARAMS: Params = Params {
+            algorithm: Algorithm::RangeFit,
+            weights: COLOUR_WEIGHTS_PERCEPTUAL,
+            weigh_colour_by_alpha: false
+        };
+
+        // Compress using texpresso
+        let tex_format = format.as_texpresso_format().unwrap();
+        let mut compressed = vec![0u8; tex_format.compressed_size(width, height)];
+        tex_format.compress(&image, width, height, COMPRESS_PARAMS, &mut compressed);
+
+        compressed
+    }
+}
+
+// Convert texture to bimage format used by the game
 fn convert_to_bimage(src_img: DynamicImage, file_name: String, stripped_file_name: String,
-    format: TextureFormat, compress: bool, compress_params: CompressBlockParams) -> Result<Vec<u8>, String> {
+    format: TextureFormat, compress: bool) -> Result<Vec<u8>, String> {
     // Get width and height
     let (width, height) = src_img.dimensions();
 
     // Get mipmap count
-    let mipmap_count = 1 + f64::from(cmp::max(width, height)).log2().floor() as u32;
+    let mipmap_count = 1 + f64::from(cmp::max(width, height)).log2() as u32;
+
+    // Get upper limit for total texture size (with mipmaps)
+    // Derived from sumation of mipmap approx
+    let four_power = 4_u32.pow(mipmap_count) as usize;
+    let block_size = format.block_size().unwrap() as usize;
+    let added_texture_approx = (4
+                                * block_size
+                                * ((width as usize + 3) / 4)
+                                * ((height as usize + 3) / 4)
+                                * (four_power - 1))
+                                / (3 * four_power)
+                                + block_size * 3;
 
     // BIM bytes
-    let mut bim: Vec<u8> = Vec::new();
+    let mut bim = Vec::with_capacity(mem::size_of::<BIMHeader>()
+        + mem::size_of::<BIMMipMap>() * mipmap_count as usize + added_texture_approx);
 
     // Create BIM header and append it to bim
     bim.extend_from_slice(&BIMHeader {
-        pixel_width: width as i32,
-        pixel_height: height as i32,
-        mip_count: mipmap_count as i32,
-        texture_format: format as i32,
-        texture_material_kind: TextureMaterialKind::from_filename(file_name, stripped_file_name, format) as i32,
+        pixel_width: width,
+        pixel_height: height,
+        mip_count: mipmap_count,
+        texture_format: format as u32,
+        texture_material_kind: TextureMaterialKind::from_filename(file_name, stripped_file_name, format) as u32,
         ..Default::default()
     }.to_bytes());
 
@@ -111,7 +180,7 @@ fn convert_to_bimage(src_img: DynamicImage, file_name: String, stripped_file_nam
                         last_pixel[j * 4..j * 4 + 4].copy_from_slice(&mip_img_bytes[i - 4..i]);
                     }
 
-                    utils::insert_slice_at(&mut mip_img_bytes, i, &last_pixel);
+                    mip_img_bytes.splice(i..i, last_pixel.iter().cloned());
                 }
 
                 mip_width = new_mip_width;
@@ -126,83 +195,34 @@ fn convert_to_bimage(src_img: DynamicImage, file_name: String, stripped_file_nam
 
                 // Duplicate last row
                 for i in 0..height_missing as usize {
-                    utils::insert_slice_at(&mut mip_img_bytes, size + mip_width as usize * 4 * i, &last_row);
+                    let insert_index = size + mip_width as usize * 4 * i;
+                    mip_img_bytes.splice(insert_index..insert_index, last_row.iter().cloned());
                 }
 
                 mip_height += height_missing;
             }
 
-            // Compress into bcn format
-            let mip_size = format.calculate_mipmap_size(mip_width, mip_height).unwrap();
+            // Compress to BCn format
+            let mip_bytes = compress_bcn(format, &mip_img_bytes, mip_width as usize, mip_height as usize);
 
-            let mip_bytes = if format == TextureFormat::FmtBc7 {
-                // Compress blocks 64 per 64
-                let blocks_x = (mip_width / 4) as usize;
-                let blocks_y = (mip_height / 4) as usize;
-                let mut packed_blocks = vec![0_u8; blocks_x * blocks_y * 16];
-
-                for by in 0..blocks_y {
-                    let n = 64;
-
-                    for bx in (0..blocks_x).step_by(n) {
-                        let num_blocks_to_process = cmp::min(blocks_x - bx, n);
-
-                        let mut pixels = vec![0_u8; 64 * n];
-
-                        // Get blocks
-                        for b in 0..num_blocks_to_process {
-                            for y in 0_usize..4_usize {
-                                let coord_x = (bx + b) * 16;
-                                let coord_y = by * 16 + y * 4;
-                                let start = coord_x + mip_width as usize * coord_y;
-                                pixels[b * 64 + y * 16..b * 64 + y * 16 + 16].copy_from_slice(&mip_img_bytes[start..start + 16]);
-                            }
-                        }
-
-                        // Compress using BC7
-                        unsafe {
-                            bc7e::compress_blocks(num_blocks_to_process as u32,
-                                packed_blocks.as_mut_ptr().add((bx + by * blocks_x) * 16) as *mut u64,
-                                pixels.as_mut_ptr() as *mut u32, &compress_params);
-                        }
-                    }
-                }
-
-                packed_blocks
-            }
-            else {
-                // Compression parameters
-                let params = Params {
-                    algorithm: Algorithm::RangeFit,
-                    weights: COLOUR_WEIGHTS_UNIFORM,
-                    weigh_colour_by_alpha: false
-                };
-
-                // Compress to BCx format
-                let tex_format = format.as_texpresso_format().unwrap();
-                let mut compressed = vec![0u8; tex_format.compressed_size(mip_width as usize, mip_height as usize)];
-                tex_format.compress(&mip_img_bytes, mip_width as usize, mip_height as usize, params, &mut compressed);
-
-                compressed
-            };
-
+            // Create mip header
             let bim_mip = BIMMipMap {
                 mip_level: i as i64,
-                mip_pixel_width: mip_img.dimensions().0 as i32,
-                mip_pixel_height: mip_img.dimensions().1 as i32,
-                decompressed_size: mip_size as i32,
-                compressed_size: mip_size as i32,
+                mip_pixel_width: mip_width,
+                mip_pixel_height: mip_height,
+                decompressed_size: mip_bytes.len() as u32,
+                compressed_size: mip_bytes.len() as u32,
                 ..Default::default()
             };
 
-            (mip_bytes, bim_mip.to_bytes(), mip_size as i32)
+            (mip_bytes, bim_mip)
         });
 
         handles.push(handle);
     }
 
-    let mut texture = Vec::new();
-    let mut bim_mip_cumulative_size: i32 = 0;
+    let mut texture = Vec::with_capacity(added_texture_approx);
+    let mut bim_mip_cumulative_size = 0_u32;
 
     // Join all threads
     for handle in handles {
@@ -213,21 +233,21 @@ fn convert_to_bimage(src_img: DynamicImage, file_name: String, stripped_file_nam
 
         // Change cumulative size
         let mut bim_mip = mipmap.1;
-        bim_mip[32..36].copy_from_slice(&bim_mip_cumulative_size.to_le_bytes());
-        bim_mip_cumulative_size += mipmap.2;
+        bim_mip.cumulative_size_streamdb = bim_mip_cumulative_size;
+        bim_mip_cumulative_size += bim_mip.compressed_size as u32;
 
         // Append mip bytes
-        bim.extend_from_slice(&bim_mip);
+        bim.extend_from_slice(&bim_mip.to_bytes());
     }
 
     // Change last bytes
+    let texture_len = texture.len();
+
     if format == TextureFormat::FmtBc5 {
-        texture.truncate(texture.len() - 16);
-        texture.extend_from_slice(&[0x87, 0x86, 0x49, 0x92, 0x24, 0x49, 0x92, 0x24, 0x86, 0x85, 0x49, 0x92, 0x24, 0x49, 0x92, 0x2]);
+        texture[texture_len - 16..].clone_from_slice(&[0x87, 0x86, 0x49, 0x92, 0x24, 0x49, 0x92, 0x24, 0x86, 0x85, 0x49, 0x92, 0x24, 0x49, 0x92, 0x2]);
     }
     else {
-        texture.truncate(texture.len() - 4);
-        texture.extend_from_slice(&[0_u8, 0_u8, 0_u8, 0_u8]);
+        texture[texture_len - 4..].clone_from_slice(&[0_u8, 0_u8, 0_u8, 0_u8]);
     }
 
     // Add dds bytes to bim
@@ -243,16 +263,18 @@ fn convert_to_bimage(src_img: DynamicImage, file_name: String, stripped_file_nam
 }
 
 // Load textures, convert them to bim, and compress them
-fn handle_textures(paths: Vec<String>) -> i32 {
+fn handle_textures(paths: Vec<String>) -> u32 {
+    let paths_len = paths.len() as u32;
+
     // Thread handles
     let mut handles = Vec::new();
 
-    // Mutex for thread handling
-    let mtx = Arc::new(Mutex::new(0));
+    // Count successful conversions
+    let counter = Arc::new(Mutex::new(0));
 
     // Iterate through args
     for path in paths {
-        let mtx = mtx.clone();
+        let counter = counter.clone();
 
         let handle = thread::spawn(move || {
             let mut output = String::default();
@@ -268,7 +290,7 @@ fn handle_textures(paths: Vec<String>) -> i32 {
             // Check if given path exists and is a file
             if !file_path.is_file() {
                 writeln!(&mut output, "ERROR: '{}' was not found.", path).unwrap();
-                return (output, false);
+                return output;
             }
 
             // Get target format
@@ -292,7 +314,7 @@ fn handle_textures(paths: Vec<String>) -> i32 {
                 Ok(reader) => reader,
                 Err(e) => {
                     writeln!(&mut output, "ERROR: Failed to load '{}': {}", path, e).unwrap();
-                    return (output, false);
+                    return output;
                 }
             };
 
@@ -300,26 +322,19 @@ fn handle_textures(paths: Vec<String>) -> i32 {
                 Ok(img) => DynamicImage::ImageRgba8(img.into_rgba8()),
                 Err(e) => {
                     writeln!(&mut output, "ERROR: Failed to load '{}': {}", path, e).unwrap();
-                    return (output, false);
+                    return output;
                 }
             };
-
-            // Init bc7 compress options
-            let mut compress_params = CompressBlockParams::default();
-
-            unsafe {
-                bc7e::compress_block_params_init_ultrafast(&mut compress_params, true);
-            }
 
             // Check if image should be compressed
             let compress = env::var("AUTOHECKIN_SKIP_COMPRESSION").is_err();
 
             // Convert image to bimage format
-            let bim_bytes = match convert_to_bimage(src_img, file_name.clone(), stripped_file_name, format, compress, compress_params) {
+            let bim_bytes = match convert_to_bimage(src_img, file_name.clone(), stripped_file_name, format, compress) {
                 Ok(vec) => vec,
                 Err(e) => {
                     writeln!(&mut output, "ERROR: Failed to convert '{}' to DDS: {}", path, e).unwrap();
-                    return (output, false);
+                    return output;
                 }
             };
 
@@ -369,15 +384,15 @@ fn handle_textures(paths: Vec<String>) -> i32 {
             // Get filename
             let new_file_name = new_file_path.file_name().unwrap().to_str().unwrap();
 
-            // Lock mtx
-            let mtx = mtx.lock().unwrap();
+            // Adquire lock
+            let mut counter = counter.lock().unwrap();
 
             // Write output file
             let mut output_file = match File::create(new_file_path.to_str().unwrap()) {
                 Ok(f) => f,
                 Err(e) => {
                     writeln!(&mut output, "ERROR: Failed to create output file: {}", e).unwrap();
-                    return (output, false);
+                    return output;
                 }
             };
 
@@ -385,35 +400,25 @@ fn handle_textures(paths: Vec<String>) -> i32 {
                 Ok(_) => (),
                 Err(e) => {
                     writeln!(&mut output, "ERROR: Failed to write to output file: {}", e).unwrap();
-                    return (output, false);
+                    return output;
                 }
             }
 
-            // Remove mtx lock
-            drop(mtx);
-
             writeln!(&mut output, "Successfully converted '{}' into '{}'.", file_name, new_file_name).unwrap();
-
-            (output, true)
+            *counter += 1;
+            output
         });
 
         handles.push(handle);
     }
 
-    let mut failures = 0;
-
     // Join threads
     for handle in handles {
         let output = handle.join().unwrap();
-        print!("{}", output.0);
-
-        // Check if conversion succeeded
-        if !output.1 {
-            failures += 1;
-        }
+        print!("{}", output);
     }
 
-    failures
+    paths_len - Arc::try_unwrap(counter).unwrap().into_inner().unwrap()
 }
 
 fn main() {
@@ -444,7 +449,7 @@ fn main() {
     }
 
     // Convert textures
-    let failures = handle_textures(args);
+    let failures = handle_textures(args) as i32;
     println!("\nDone.");
 
     // Exit

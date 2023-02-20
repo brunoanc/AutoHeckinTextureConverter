@@ -1,28 +1,12 @@
 #[cfg(target_os = "windows")]
 extern crate windows_sys;
 
-use std::ptr;
-
-#[cfg(target_os = "windows")]
-use windows_sys::Win32::System::Console::GetConsoleProcessList;
-#[cfg(target_os = "windows")]
-use std::io::{stdin, Read};
-
-// Insert a slice at a specific location in a vec
-// From https://gist.github.com/frozolotl/22a051baa5153b92e0b0207ad462ec12
-pub fn insert_slice_at<T: Copy>(vec: &mut Vec<T>, index: usize, slice: &[T]) {
-    unsafe {
-        vec.reserve(slice.len());
-        let insert_ptr = vec.as_mut_ptr().add(index);
-        ptr::copy(insert_ptr, insert_ptr.add(slice.len()), vec.len() - index);
-        ptr::copy_nonoverlapping(slice.as_ptr(), insert_ptr, slice.len());
-        vec.set_len(vec.len() + slice.len());
-    }
-}
-
 // Simulates the 'pause' system command on Windows
 #[cfg(target_os = "windows")]
 pub fn press_any_key() {
+    use windows_sys::Win32::System::Console::GetConsoleProcessList;
+    use std::io::{stdin, Read};
+
     // Get process count
     let process_count: u32;
 

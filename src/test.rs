@@ -1,15 +1,5 @@
 use super::*;
 
-// Tests
-#[test]
-fn test_get_mipmap_size() {
-    assert_eq!(TextureFormat::FmtBc1Srgb.calculate_mipmap_size(1024, 2048), Some(1048576));
-    assert_eq!(TextureFormat::FmtBc3.calculate_mipmap_size(720, 560), Some(403200));
-    assert_eq!(TextureFormat::FmtBc4.calculate_mipmap_size(271, 783), Some(106624));
-    assert_eq!(TextureFormat::FmtBc5.calculate_mipmap_size(576, 254), Some(147456));
-    assert_eq!(TextureFormat::FmtBc7.calculate_mipmap_size(2946, 822), Some(2429152));
-}
-
 #[test]
 fn test_get_texture_material_kind() {
     assert_eq!(
@@ -62,15 +52,8 @@ fn helper_convert_to_bimage(file_path: &str, format: TextureFormat, expected_bim
         bc7e::compress_block_init();
     }
 
-    // Init bc7 compress options
-    let mut p = CompressBlockParams::default();
-
-    unsafe {
-        bc7e::compress_block_params_init_ultrafast(&mut p, true);
-    }
-
     // Convert image to bimage format
-    let bim_bytes = match convert_to_bimage(src_img, file_name.into(), stripped_file_name, format, false, p) {
+    let bim_bytes = match convert_to_bimage(src_img, file_name.into(), stripped_file_name, format, false) {
         Ok(vec) => vec,
         Err(_) => panic!("Failed to convert to bimage")
     };
