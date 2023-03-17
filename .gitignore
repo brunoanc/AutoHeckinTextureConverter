@@ -7,9 +7,9 @@ target/
 # Sample files used for testing
 *.png
 *.tga
-*$bc?
-*$bc?-?
-*$bc?-??
+*$bc?*
+*$alpha*
+!test/*
 
 # IDE files
 .idea/

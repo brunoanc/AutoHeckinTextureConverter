@@ -151,3 +151,15 @@ fn test_convert_to_bimage_5() {
 
     helper_convert_to_bimage(file_path, format, bim_bytes);
 }
+
+#[test]
+fn test_convert_to_bimage_6() {
+    let file_path = "./test/64_df.tga$alpha$streamed$nomips$mtlkind=font.png";
+    let format = TextureFormat::FmtAlpha;
+    let bim_bytes: [u8; 63] = [
+        66, 73, 77, 21, 0, 0, 0, 0, 19, 0, 0, 0, 0, 5, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 128, 63, 0, 5, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    ];
+
+    helper_convert_to_bimage(file_path, format, bim_bytes);
+}
