@@ -121,7 +121,10 @@ fn convert_to_bimage(
     let (width, height) = src_img.dimensions();
 
     // Get mipmap count
-    let mipmap_count = 1 + f64::from(cmp::max(width, height)).log2() as u32;
+    let mipmap_count = match () {
+        _ if file_name.contains("$nomips") => 1,
+        _ => 1 + f64::from(cmp::max(width, height)).log2() as u32
+    };
 
     // Get upper limit for total texture size (with mipmaps)
     // Derived from sumation of mipmap approx
