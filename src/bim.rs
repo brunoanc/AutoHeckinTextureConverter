@@ -36,50 +36,23 @@ impl TextureMaterialKind {
         file_name: String, stripped_file_name: String, format: TextureFormat
     ) -> TextureMaterialKind {
         // Get material kind from filename
-        if file_name.contains("$mtlkind=ui") {
-            TextureMaterialKind::TmkUi
-        }
-        else if file_name.contains("$mtlkind=decalnormal") {
-            TextureMaterialKind::TmkDecalnormal
-        }
-        else if file_name.contains("$mtlkind=decalalbedo") {
-            TextureMaterialKind::TmkDecalalbedo
-        }
-        else if file_name.contains("$mtlkind=decalspecular") {
-            TextureMaterialKind::TmkDecalspecular
-        }
-        else if file_name.contains("$mtlkind=particle") {
-            TextureMaterialKind::TmkParticle
-        }
-        else if file_name.contains("$mtlkind=heightmap") {
-            TextureMaterialKind::TmkHeightmap
-        }
-        else if file_name.contains("$mtlkind=font") {
-            TextureMaterialKind::TmkFont
-        }
-        else if stripped_file_name.ends_with("_n") || file_name.ends_with("_Normal") {
-            TextureMaterialKind::TmkNormal
-        }
-        else if stripped_file_name.ends_with("_s") {
-            TextureMaterialKind::TmkSpecular
-        }
-        else if stripped_file_name.ends_with("_g") {
-            TextureMaterialKind::TmkSmoothness
-        }
-        else if stripped_file_name.ends_with("_e") {
-            TextureMaterialKind::TmkBloommask
-        }
-        else if stripped_file_name.ends_with("_h") {
-            TextureMaterialKind::TmkHeightmap
-        }
-        else if stripped_file_name.ends_with("_sss") {
-            TextureMaterialKind::TmkSssmask
-        }
-        else if format == TextureFormat::FmtBc1Srgb {
-            TextureMaterialKind::TmkAlbedo
-        }
-        else {
-            TextureMaterialKind::TmkNone
+        match () {
+            _ if file_name.contains("$mtlkind=ui") => TextureMaterialKind::TmkUi,
+            _ if file_name.contains("$mtlkind=decalnormal") => TextureMaterialKind::TmkDecalnormal,
+            _ if file_name.contains("$mtlkind=decalalbedo") => TextureMaterialKind::TmkDecalalbedo,
+            _ if file_name.contains("$mtlkind=decalspecular") => TextureMaterialKind::TmkDecalspecular,
+            _ if file_name.contains("$mtlkind=particle") => TextureMaterialKind::TmkParticle,
+            _ if file_name.contains("$mtlkind=heightmap") => TextureMaterialKind::TmkHeightmap,
+            _ if file_name.contains("$mtlkind=font") => TextureMaterialKind::TmkFont,
+            _ if stripped_file_name.ends_with("_n") => TextureMaterialKind::TmkNormal,
+            _ if stripped_file_name.ends_with("_Normal") => TextureMaterialKind::TmkNormal,
+            _ if stripped_file_name.ends_with("_s") => TextureMaterialKind::TmkSpecular,
+            _ if stripped_file_name.ends_with("_g") => TextureMaterialKind::TmkSmoothness,
+            _ if stripped_file_name.ends_with("_e") => TextureMaterialKind::TmkBloommask,
+            _ if stripped_file_name.ends_with("_h") => TextureMaterialKind::TmkHeightmap,
+            _ if stripped_file_name.ends_with("_sss") => TextureMaterialKind::TmkSssmask,
+            _ if format == TextureFormat::FmtBc1Srgb => TextureMaterialKind::TmkAlbedo,
+            _ => TextureMaterialKind::TmkNone
         }
     }
 }

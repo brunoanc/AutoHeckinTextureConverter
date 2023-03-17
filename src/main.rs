@@ -49,61 +49,67 @@ fn kraken_compress(vec: &mut Vec<u8>) -> Result<Vec<u8>, String> {
 
 // Compress into BCn format
 fn compress_bcn(format: TextureFormat, image: &[u8], width: usize, height: usize) -> Vec<u8> {
-    if format == TextureFormat::FmtBc7 {
-        // Compress blocks 64 per 64
-        let blocks_x = width / 4;
-        let blocks_y = height / 4;
-        let mut packed_blocks = vec![0_u8; blocks_x * blocks_y * 16];
+    match format {
+        TextureFormat::FmtAlpha => {
+            // Extract alpha byte
+            image.iter().skip(3).step_by(4).copied().collect()
+        },
+        TextureFormat::FmtBc7 => {
+            // Compress blocks 64 per 64
+            let blocks_x = width / 4;
+            let blocks_y = height / 4;
+            let mut packed_blocks = vec![0_u8; blocks_x * blocks_y * 16];
 
-        for by in 0..blocks_y {
-            let n = 64;
+            for by in 0..blocks_y {
+                let n = 64;
 
-            for bx in (0..blocks_x).step_by(n) {
-                let num_blocks_to_process = cmp::min(blocks_x - bx, n);
+                for bx in (0..blocks_x).step_by(n) {
+                    let num_blocks_to_process = cmp::min(blocks_x - bx, n);
 
-                let mut pixels = vec![0_u8; 64 * n];
+                    let mut pixels = vec![0_u8; 64 * n];
 
-                // Get blocks
-                for b in 0..num_blocks_to_process {
-                    for y in 0_usize..4_usize {
-                        let coord_x = (bx + b) * 16;
-                        let coord_y = by * 16 + y * 4;
-                        let start = coord_x + width * coord_y;
-                        pixels[b * 64 + y * 16..b * 64 + y * 16 + 16]
-                            .copy_from_slice(&image[start..start + 16]);
+                    // Get blocks
+                    for b in 0..num_blocks_to_process {
+                        for y in 0_usize..4_usize {
+                            let coord_x = (bx + b) * 16;
+                            let coord_y = by * 16 + y * 4;
+                            let start = coord_x + width * coord_y;
+                            pixels[b * 64 + y * 16..b * 64 + y * 16 + 16]
+                                .copy_from_slice(&image[start..start + 16]);
+                        }
+                    }
+
+                    // Compress to BC7 using bc7e
+                    static COMPRESS_PARAMS: CompressBlockParams = CompressBlockParams::ultrafast();
+
+                    unsafe {
+                        bc7e::compress_blocks(
+                            num_blocks_to_process as u32,
+                            packed_blocks.as_mut_ptr().add((bx + by * blocks_x) * 16) as *mut u64,
+                            pixels.as_mut_ptr() as *mut u32,
+                            &COMPRESS_PARAMS
+                        );
                     }
                 }
-
-                // Compress to BC7 using bc7e
-                static COMPRESS_PARAMS: CompressBlockParams = CompressBlockParams::ultrafast();
-
-                unsafe {
-                    bc7e::compress_blocks(
-                        num_blocks_to_process as u32,
-                        packed_blocks.as_mut_ptr().add((bx + by * blocks_x) * 16) as *mut u64,
-                        pixels.as_mut_ptr() as *mut u32,
-                        &COMPRESS_PARAMS
-                    );
-                }
             }
+
+            packed_blocks
+        },
+        _ => {
+            // Compression parameters
+            static COMPRESS_PARAMS: Params = Params {
+                algorithm: Algorithm::RangeFit,
+                weights: texpresso::COLOUR_WEIGHTS_PERCEPTUAL,
+                weigh_colour_by_alpha: false
+            };
+
+            // Compress using texpresso
+            let tex_format = format.as_texpresso_format().unwrap();
+            let mut compressed = vec![0u8; tex_format.compressed_size(width, height)];
+            tex_format.compress(image, width, height, COMPRESS_PARAMS, &mut compressed);
+
+            compressed
         }
-
-        packed_blocks
-    }
-    else {
-        // Compression parameters
-        static COMPRESS_PARAMS: Params = Params {
-            algorithm: Algorithm::RangeFit,
-            weights: texpresso::COLOUR_WEIGHTS_PERCEPTUAL,
-            weigh_colour_by_alpha: false
-        };
-
-        // Compress using texpresso
-        let tex_format = format.as_texpresso_format().unwrap();
-        let mut compressed = vec![0u8; tex_format.compressed_size(width, height)];
-        tex_format.compress(image, width, height, COMPRESS_PARAMS, &mut compressed);
-
-        compressed
     }
 }
 
@@ -357,20 +363,16 @@ fn handle_textures(paths: Vec<String>) -> u32 {
             }
 
             // Get target format
-            let mut format = TextureFormat::FmtBc1Srgb;
-
-            if file_name.contains("$bc7") {
-                format = TextureFormat::FmtBc7;
-            }
-            else if file_name.contains("$bc3") {
-                format = TextureFormat::FmtBc3;
-            }
-            else if file_name.contains("$bc4") {
-                format = TextureFormat::FmtBc4;
-            }
-            else if stripped_file_name.ends_with("_n") || stripped_file_name.ends_with("_Normal") {
-                format = TextureFormat::FmtBc5;
-            }
+            let format = match () {
+                _ if file_name.contains("$bc7") => TextureFormat::FmtBc7,
+                _ if file_name.contains("$bc5") => TextureFormat::FmtBc5,
+                _ if file_name.contains("$bc4") => TextureFormat::FmtBc4,
+                _ if file_name.contains("$bc3") => TextureFormat::FmtBc3,
+                _ if file_name.contains("$alpha") => TextureFormat::FmtAlpha,
+                _ if stripped_file_name.ends_with("_n") => TextureFormat::FmtBc5,
+                _ if stripped_file_name.ends_with("_Normal") => TextureFormat::FmtBc5,
+                _ => TextureFormat::FmtBc1Srgb
+            };
 
             // Load image
             let mut src_reader = match ImageReader::open(file_path) {
