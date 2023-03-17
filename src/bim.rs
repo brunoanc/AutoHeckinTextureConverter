@@ -54,6 +54,9 @@ impl TextureMaterialKind {
         else if file_name.contains("$mtlkind=heightmap") {
             TextureMaterialKind::TmkHeightmap
         }
+        else if file_name.contains("$mtlkind=font") {
+            TextureMaterialKind::TmkFont
+        }
         else if stripped_file_name.ends_with("_n") || file_name.ends_with("_Normal") {
             TextureMaterialKind::TmkNormal
         }
