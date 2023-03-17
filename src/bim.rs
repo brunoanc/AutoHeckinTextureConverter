@@ -123,6 +123,7 @@ impl TextureFormat {
     // Get block size for format
     pub fn block_size(&self) -> Option<u32> {
         match self {
+            TextureFormat::FmtAlpha => Some(8),
             TextureFormat::FmtBc1Srgb => Some(8),
             TextureFormat::FmtBc3 => Some(16),
             TextureFormat::FmtBc4 => Some(8),
