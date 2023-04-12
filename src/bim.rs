@@ -44,6 +44,7 @@ impl TextureMaterialKind {
             _ if file_name.contains("$mtlkind=particle") => TextureMaterialKind::TmkParticle,
             _ if file_name.contains("$mtlkind=heightmap") => TextureMaterialKind::TmkHeightmap,
             _ if file_name.contains("$mtlkind=font") => TextureMaterialKind::TmkFont,
+            _ if file_name.contains("$mtlkind=bloommask") => TextureMaterialKind::TmkBloommask,
             _ if stripped_file_name.ends_with("_n") => TextureMaterialKind::TmkNormal,
             _ if stripped_file_name.ends_with("_Normal") => TextureMaterialKind::TmkNormal,
             _ if stripped_file_name.ends_with("_s") => TextureMaterialKind::TmkSpecular,
