@@ -18,7 +18,7 @@ use std::{
 use bc7e::CompressBlockParams;
 use bim::{BIMHeader, BIMMipMap, TextureFormat, TextureMaterialKind};
 use fast_image_resize::{images::Image, MulDiv, PixelType, Resizer};
-use image::{ImageReader, ImageFormat, RgbaImage};
+use image::{ImageFormat, ImageReader, RgbaImage};
 use texpresso::{Algorithm, Params};
 
 // Compress data with oodle's kraken
@@ -160,13 +160,12 @@ fn convert_to_bimage(
     let mut src_img_buf = src_img.into_raw();
 
     // Create source container for resize
-    let mut resize_src = Image::from_slice_u8(width, height, src_img_buf.as_mut_slice(), PixelType::U8x4).unwrap();
+    let mut resize_src =
+        Image::from_slice_u8(width, height, src_img_buf.as_mut_slice(), PixelType::U8x4).unwrap();
 
     // Multiply RGB by alpha (needed for resize algorithm)
     let alpha_mul_div = MulDiv::default();
-    alpha_mul_div
-        .multiply_alpha_inplace(&mut resize_src)
-        .unwrap();
+    alpha_mul_div.multiply_alpha_inplace(&mut resize_src).unwrap();
 
     let resize_src_arc = Arc::new(resize_src);
     let alpha_mul_div_arc = Arc::new(alpha_mul_div);
@@ -199,15 +198,13 @@ fn convert_to_bimage(
                 let mut resize_dst = Image::new(mip_width, mip_height, resize_src_clone.pixel_type());
 
                 // Resize using Box filter
-                let mut resizer = Resizer::new();//ResizeAlg::Convolution(FilterType::Box)
+                let mut resizer = Resizer::new();
                 resizer
                     .resize(resize_src_clone.as_ref(), &mut resize_dst, None)
                     .unwrap();
 
                 // Divide RGB by alpha
-                alpha_mul_div_clone
-                    .divide_alpha_inplace(&mut resize_dst)
-                    .unwrap();
+                alpha_mul_div_clone.divide_alpha_inplace(&mut resize_dst).unwrap();
 
                 // Get resized bytes
                 let mut mip_img_bytes = resize_dst.buffer().to_vec();
